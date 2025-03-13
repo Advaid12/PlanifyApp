@@ -23,6 +23,14 @@ export default StyleSheet.create({
     borderRadius: 8,
     backgroundColor: "#f9f9f9",
   },
+  pickerContainer: {
+    width: "90%",
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    backgroundColor: "#f9f9f9",
+  },
   button: {
     width: "90%",
     padding: 15,
