@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
+
 import styles from "../styles/SignupScreen.styles";
 
 export default function SignupScreen({ navigation }) {

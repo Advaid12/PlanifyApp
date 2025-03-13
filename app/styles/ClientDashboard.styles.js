@@ -20,6 +20,7 @@ export default StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 5,
+    elevation: 2,
   },
   subHeader: {
     fontSize: 18,
@@ -31,12 +32,44 @@ export default StyleSheet.create({
     color: "#555",
     marginBottom: 5,
   },
-  milestoneItem: {
-    padding: 10,
-    backgroundColor: "#e0f7fa",
-    marginVertical: 5,
-    borderRadius: 5,
+  
+  // 🔹 Milestone (Timeline) Styles
+  timelineItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+    paddingVertical: 5,
   },
+  timelineCircle: {
+    width: 15,
+    height: 15,
+    borderRadius: 10,
+    marginRight: 10,
+  },
+  timelineLine: {
+    position: "absolute",
+    left: 7,
+    width: 2,
+    backgroundColor: "#ddd",
+    top: 15,
+    bottom: -10,
+  },
+  timelineText: {
+    fontSize: 16,
+    color: "#333",
+  },
+
+  // 🔹 Form Styles
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 5,
+    backgroundColor: "#fff",
+  },
+
+  // 🔹 Alert & Image Styles
   alertText: {
     color: "red",
     fontWeight: "bold",
@@ -47,6 +80,8 @@ export default StyleSheet.create({
     borderRadius: 8,
     marginRight: 10,
   },
+
+  // 🔹 Button Styles
   button: {
     backgroundColor: "#007bff",
     padding: 10,

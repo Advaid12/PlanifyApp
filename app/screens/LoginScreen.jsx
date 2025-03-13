@@ -1,18 +1,19 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Platform } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import styles from "../styles/LoginScreen.styles"; // Import styles
+import { useNavigation } from "@react-navigation/native";
+import styles from "../styles/LoginScreen.styles"; // Ensure you have a styles file
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen() {
+  const navigation = useNavigation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ✅ Use correct API URL for different platforms
-  const API_URL =
-    Platform.OS === "android" ? "http://10.0.2.2:5000/api/login" : "http://localhost:5000/api/login";
+  // ✅ Define API URL (adjust for your backend)
+  const API_URL = "http://localhost:5000/api/login"; // Change to your API URL
 
   // 🛠️ Handle Login Request
   const handleLogin = async () => {
@@ -25,10 +26,7 @@ export default function LoginScreen({ navigation }) {
     setErrorMessage(""); // Clear previous errors
 
     try {
-      console.log("🔵 Sending login request...");
-      const response = await axios.post(API_URL, { email, password }, { headers: { "Content-Type": "application/json" } });
-
-      console.log("🟢 Response received:", response.data);
+      const response = await axios.post(API_URL, { email, password });
       const { token, user } = response.data;
 
       if (!token || !user) {
@@ -38,27 +36,16 @@ export default function LoginScreen({ navigation }) {
       await AsyncStorage.setItem("authToken", token);
       await AsyncStorage.setItem("userRole", user.role);
 
-      console.log("✅ User authenticated, navigating to dashboard...");
-      console.log("➡ User Role:", user.role);
-
-      // 🛠️ Ensure navigation works properly
-      if (!navigation) {
-        console.error("❌ Navigation object is undefined!");
-        return;
-      }
-
-      // 🚀 Navigate based on role
+      console.log("✅ User authenticated, navigating...");
       if (user.role === "Client") {
         navigation.navigate("ClientDashboard");
       } else if (user.role === "Site Engineer") {
         navigation.navigate("EngineerDashboard");
       } else if (user.role === "Worker") {
-        navigation.navigate("WorkerDashboard");  // ✅ Corrected name
+        navigation.navigate("WorkerDashboard");
       } else {
-        navigation.navigate("Signup");
+        navigation.navigate("Welcome");
       }
-      
-
     } catch (error) {
       console.error("❌ Login Error:", error.response?.data || error.message);
       setErrorMessage(error.response?.data?.error || "Login failed. Please check your credentials.");
