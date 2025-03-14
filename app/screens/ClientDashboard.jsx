@@ -1,12 +1,16 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from "react-native";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useNavigation } from "@react-navigation/native";
+import React, { useState } from "react";
+import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import styles from "../styles/ClientDashboard.styles";
+
+
+const apiKey = "AIzaSyAs82I6c5XpsTyfuEsx6s7NWxGWFfLY8VA";//process.env.GEMINI_API_KEY; 
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
 export default function ClientDashboard() {
   const navigation = useNavigation();
 
-  // 🔹 State for project details
   const [projectDetails, setProjectDetails] = useState({
     name: "",
     budget: "",
@@ -14,62 +18,48 @@ export default function ClientDashboard() {
     requirements: "",
   });
 
-  // 🔹 State for AI-generated project plan
+
   const [projectPlan, setProjectPlan] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 🔹 Gemini API Key (Replace with your key)
-  const API_KEY = "AIzaSyCRa8_-k483JqStvyI-bHCXNC3xWjOBTEo";
-  const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateText?key=${API_KEY}`;
 
-  // 🔹 Function to Call Gemini API
   const generateProjectPlan = async () => {
     if (!projectDetails.name || !projectDetails.budget || !projectDetails.deadline || !projectDetails.requirements) {
       Alert.alert("Error", "All fields are required.");
       return;
     }
 
-    setLoading(true); // Show loader while fetching
-    setProjectPlan(""); // Clear old plan
-
-    const requestBody = {
-      prompt: {
-        text: `Generate a detailed construction project plan with the following details:
-        - Project Name: ${projectDetails.name}
-        - Budget: ${projectDetails.budget} USD
-        - Deadline: ${projectDetails.deadline}
-        - Requirements: ${projectDetails.requirements}
-        
-        The project plan should include:
-        - Phase-wise breakdown (Planning, Foundation, Framing, Roofing, Interiors)
-        - Estimated time for each phase
-        - Cost distribution per phase
-        - Materials required
-        - Workforce allocation
-        - Risk factors and mitigation strategies`,
-      },
-      generationConfig: {
-        temperature: 1,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 8192,
-        responseMimeType: "text/plain",
-      },
-    };
+    setLoading(true);
+    setProjectPlan(""); 
 
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+      const chatSession = model.startChat({
+        generationConfig: {
+          temperature: 1,
+          topP: 0.95,
+          topK: 40,
+          maxOutputTokens: 8192,
+          responseMimeType: "text/plain",
+        },
+        history: [],
       });
 
-      const data = await response.json();
-      if (data.candidates && data.candidates.length > 0) {
-        setProjectPlan(data.candidates[0].output);
-      } else {
-        Alert.alert("Error", "Failed to generate project plan.");
-      }
+      const prompt = `Generate a detailed construction project plan with the following details:
+      - Project Name: ${projectDetails.name}
+      - Budget: ${projectDetails.budget} USD
+      - Deadline: ${projectDetails.deadline}
+      - Requirements: ${projectDetails.requirements}
+
+      The project plan should include:
+      - Phase-wise breakdown (Planning, Foundation, Framing, Roofing, Interiors)
+      - Estimated time for each phase
+      - Cost distribution per phase
+      - Materials required
+      - Workforce allocation
+      - Risk factors and mitigation strategies`;
+
+      const result = await chatSession.sendMessage(prompt);
+      setProjectPlan(result.response.text());
     } catch (error) {
       console.error("API Error:", error);
       Alert.alert("Error", "Failed to connect to Gemini API.");
@@ -82,7 +72,7 @@ export default function ClientDashboard() {
     <ScrollView style={styles.container}>
       <Text style={styles.header}>Client Dashboard</Text>
 
-      {/* 🔹 Project Details Form */}
+      {/* Project Details Form */}
       <View style={styles.section}>
         <Text style={styles.subHeader}>Enter Project Details</Text>
 
@@ -121,10 +111,10 @@ export default function ClientDashboard() {
         </TouchableOpacity>
       </View>
 
-      {/* 🔹 Loading Indicator */}
+      {/* Loading Indicator */}
       {loading && <ActivityIndicator size="large" color="#007bff" />}
 
-      {/* 🔹 Display Generated Project Plan */}
+      {/* Display Generated Project Plan */}
       {projectPlan !== "" && (
         <View style={styles.section}>
           <Text style={styles.subHeader}>Generated Project Plan</Text>
@@ -132,7 +122,7 @@ export default function ClientDashboard() {
         </View>
       )}
 
-      {/* 🔹 Logout Button */}
+      {/* Logout Button */}
       <TouchableOpacity style={styles.button} onPress={() => navigation.navigate("Welcome")}>
         <Text style={styles.buttonText}>Logout</Text>
       </TouchableOpacity>

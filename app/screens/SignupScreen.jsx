@@ -3,7 +3,7 @@ import axios from "axios";
 import React, { useState } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 
-import styles from "../styles/SignupScreen.styles";
+import styles from "../styles/SignUpScreen.styles";
 
 export default function SignupScreen({ navigation }) {
   const [name, setName] = useState("");
