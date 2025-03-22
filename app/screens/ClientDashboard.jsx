@@ -167,7 +167,7 @@ export default function ClientDashboard() {
         />
 
         <TextInput
-          placeholder="Budget (in USD)"
+          placeholder="Budget (in INR)"
           style={styles.input}
           keyboardType="numeric"
           value={projectDetails.budget}
