@@ -163,6 +163,175 @@ app.get("/api/worker-profile", async (req, res) => {
   }
 });
 
+// **🟢 Create a New Project**
+// app.post("/api/create-project", async (req, res) => {
+//   const { name, budget, deadline, requirements } = req.body;
+
+//   if (!name || !budget || !deadline || !requirements) {
+//     return res.status(400).json({ error: "All fields are required" });
+//   }
+
+//   try {
+//     console.log("🔄 Creating project with:", { name, budget, deadline, requirements });
+
+//     const result = await pool.query(
+//       "INSERT INTO projects (name, budget, deadline, requirements) VALUES ($1, $2, $3, $4) RETURNING id",
+//       [name, budget, deadline, requirements]
+//     );
+
+//     console.log("✅ Project Created:", result.rows[0]);
+//     res.status(201).json({ message: "Project created", project_id: result.rows[0].id });
+//   } catch (error) {
+//     console.error("❌ Error creating project:", error);
+//     res.status(500).json({ error: "Server error" });
+//   }
+// });
+const { v4: uuidv4 } = require("uuid");
+
+app.post("/api/create-project", async (req, res) => {
+  const { project_id, name, budget, deadline } = req.body;
+
+  if (!name || !budget || !deadline) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  try {
+    // Use provided project_id or generate a new one
+    const finalProjectId = project_id || uuidv4();
+
+    const result = await pool.query(
+      "INSERT INTO projects (project_id, name, budget, deadline) VALUES ($1, $2, $3, $4) RETURNING project_id",
+      [finalProjectId, name, budget, deadline]
+    );
+
+    res.status(201).json({ message: "Project created", project_id: result.rows[0].project_id });
+  } catch (error) {
+    console.error("Error creating project:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+
+
+
+// **🟢 Save Generated Project Plan**
+// app.post("/api/create-project", async (req, res) => {
+//   const { name, budget, deadline, requirements } = req.body;
+
+//   if (!name || !budget || !deadline || !requirements) {
+//     return res.status(400).json({ error: "All fields are required" });
+//   }
+
+//   try {
+//     console.log("🔄 Creating project with:", { name, budget, deadline, requirements });
+
+//     const result = await pool.query(
+//       "INSERT INTO projects (name, budget, deadline, requirements) VALUES ($1, $2, $3, $4) RETURNING id",
+//       [name, budget, deadline, requirements]
+//     );
+
+//     console.log("✅ Project Created:", result.rows[0]);
+//     res.status(201).json({ message: "Project created", project_id: result.rows[0].id });
+//   } catch (error) {
+//     console.error("❌ Error creating project:", error);
+//     res.status(500).json({ error: "Server error" });
+//   }
+// });
+
+
+
+// ✅ Ensure uuid is only imported once at the top of server.js
+//const { v4: uuidv4 } = require("uuid");
+
+// app.post("/api/save-project-plan", async (req, res) => {
+//   const { project_id, plan } = req.body;
+
+//   if (!project_id || !plan) {
+//     return res.status(400).json({ error: "Project ID and Plan are required" });
+//   }
+
+//   try {
+//     console.log("🔄 Saving project plan for:", project_id);
+
+//     const result = await pool.query(
+//       "UPDATE projects SET plan = $1 WHERE project_id = $2 RETURNING *",
+//       [plan, project_id]
+//     );
+
+//     if (result.rowCount === 0) {
+//       return res.status(404).json({ error: "Project not found" });
+//     }
+
+//     console.log("✅ Project Plan Saved:", result.rows[0]);
+//     res.status(200).json({ message: "Project plan saved", project: result.rows[0] });
+//   } catch (error) {
+//     console.error("❌ Error saving project plan:", error);
+//     res.status(500).json({ error: "Server error" });
+//   }
+// });
+
+
+
+
+
+
+
+
+
+
+
+
+// **🟢 Save Extracted Tasks (Milestones)**
+app.post("/api/save-tasks", async (req, res) => {
+  const { project_id, tasks } = req.body;
+
+  if (!project_id || !tasks || !Array.isArray(tasks)) {
+    return res.status(400).json({ error: "Invalid project ID or tasks format" });
+  }
+
+  try {
+    const values = tasks.map(task => `(${project_id}, '${task.task}', '${task.milestone}')`).join(",");
+    await pool.query(`INSERT INTO milestones (project_id, name, deadline) VALUES ${values}`);
+
+    res.json({ message: "Tasks saved as milestones" });
+  } catch (error) {
+    console.error("Error saving tasks:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// **🟢 Fetch Project Details**
+app.get("/api/projects/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query("SELECT * FROM projects WHERE id = $1", [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching project:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// **🟢 Fetch Tasks for a Project**
+app.get("/api/project-tasks/:project_id", async (req, res) => {
+  const { project_id } = req.params;
+
+  try {
+    const result = await pool.query("SELECT * FROM milestones WHERE project_id = $1", [project_id]);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 
 // **🟠 Worker Updates Availability**
