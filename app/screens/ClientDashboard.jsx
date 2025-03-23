@@ -28,10 +28,7 @@ export default function ClientDashboard() {
   });
 
   const [projectPlan, setProjectPlan] = useState("");
-<<<<<<< HEAD
-=======
   const [id, setId] = useState("")
->>>>>>> 35216fa2798e9e980c9e49aedbf134a1e38c61ec
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [planGenerated, setPlanGenerated] = useState(false);
