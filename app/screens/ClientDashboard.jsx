@@ -13,7 +13,8 @@ import {
 
 import styles from "../styles/ClientDashboard.styles";
 
-const apiKey = "AIzaSyAs82I6c5XpsTyfuEsx6s7NWxGWFfLY8VA"; // Replace with your actual API Key
+const apiKey = "AIzaSyC8pRmxdohVeqKVX_Rqyn4I4fn9Eh3KrVA"; // Use environment variables in production
+
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
@@ -24,25 +25,69 @@ export default function ClientDashboard() {
     id: "",
     budget: "",
     deadline: "",
-    requirements: "",
   });
 
   const [projectPlan, setProjectPlan] = useState("");
+<<<<<<< HEAD
+=======
+
+
+  const [id, setId] = useState("")
+>>>>>>> 25da85335aa9c8a499f2e0bda572ea8289bb0aca
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [planGenerated, setPlanGenerated] = useState(false);
 
+<<<<<<< HEAD
   const generateProjectPlan = async () => {
     if (!projectDetails.name || !projectDetails.budget || !projectDetails.deadline || !projectDetails.requirements) {
+=======
+  // **Generate Project Plan using Gemini API**
+  const saveProjectDetails = async () => {
+    if (!projectDetails.name || !projectDetails.budget || !projectDetails.deadline) {
+>>>>>>> 25da85335aa9c8a499f2e0bda572ea8289bb0aca
       Alert.alert("Error", "All fields are required.");
       return;
     }
-
+  
+    try {
+      const response = await fetch("http://localhost:5000/api/create-project", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          project_id: projectDetails.id || null,  // Send only if user provides one
+          name: projectDetails.name,
+          budget: projectDetails.budget,
+          deadline: projectDetails.deadline,
+        }),
+      });
+  
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save project details");
+      }
+  
+      setProjectDetails((prev) => ({ ...prev, id: data.project_id }));
+  
+      Alert.alert("Success", "Project created successfully!");
+    } catch (error) {
+      console.error("Error creating project:", error);
+      Alert.alert("Error", "Failed to connect to server.");
+    }
+  };
+  
+  
+  // Modify generateProjectPlan to first save details
+  const generateProjectPlan = async () => {
+    if (!projectDetails.id) {
+      await saveProjectDetails(); // Ensure project is saved before generating plan
+    }
+  
     setLoading(true);
     setProjectPlan("");
     setTasks([]);
     setPlanGenerated(false);
-
+  
     try {
       const chatSession = model.startChat({
         generationConfig: {
@@ -54,24 +99,50 @@ export default function ClientDashboard() {
         },
         history: [],
       });
-
+  
       const prompt = `Generate a detailed construction project plan with the following details:
+<<<<<<< HEAD
       - Project Name: ${projectDetails.name}
       - Project ID: ${projectDetails.id}
       - Budget: ${projectDetails.budget} INR
       - Deadline: ${projectDetails.deadline}
       - Requirements: ${projectDetails.requirements}`;
 
+=======
+        - Project Name: ${projectDetails.name}
+        - Project ID: ${projectDetails.id}
+        - Budget: ${projectDetails.budget} INR
+        - Deadline: ${projectDetails.deadline}
+        - Requirements: ${projectDetails.requirements}
+  
+        The project plan should include:
+        - Phase-wise breakdown (Planning, Foundation, Framing, Roofing, Interiors)
+        - Estimated time for each phase
+        - Cost distribution per phase
+        - Materials required
+        - Workforce allocation
+        - Risk factors and mitigation strategies`;
+  
+>>>>>>> 25da85335aa9c8a499f2e0bda572ea8289bb0aca
       const result = await chatSession.sendMessage(prompt);
-      setProjectPlan(result.response.text());
+      const generatedPlan = result.response.text();
+      setProjectPlan(generatedPlan);
       setPlanGenerated(true);
+  
+      // Save the generated project plan to the database
+      await fetch("http://localhost:5000/api/save-project-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: projectDetails.id, plan: generatedPlan }),
+      });
     } catch (error) {
       console.error("API Error:", error);
-      Alert.alert("Error", "Failed to connect to Gemini API.");
+      Alert.alert("Error", "Failed to generate project plan.");
     } finally {
       setLoading(false);
     }
   };
+  
 
   const handleRejectPlan = () => {
     setProjectPlan("");
@@ -139,6 +210,8 @@ export default function ClientDashboard() {
       setLoading(false);
     }
   };
+
+  
 
   return (
     <ScrollView style={styles.container}>
