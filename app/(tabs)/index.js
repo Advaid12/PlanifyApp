@@ -3,9 +3,11 @@ import React from "react";
 import ClientDashboard from "../screens/ClientDashboard";
 import EngineerDashboard from "../screens/EngineerDashboard";
 import LoginScreen from "../screens/LoginScreen.jsx";
-import SignupScreen from "../screens/SignupScreen";
+import SignupScreen from "../screens/SignupScreen.jsx";
 import WelcomeScreen from "../screens/WelcomeScreen";
 import WorkerDashboard from "../screens/WorkerDashboard";
+import AvailableTasks from "../screens/AvailableTasks";
+import TaskStatusUpdate from "../screens/TaskStatusUpdate";
 
 const Stack = createStackNavigator();
 
@@ -17,7 +19,9 @@ export default function Index() {
       <Stack.Screen name="Signup" component={SignupScreen} />
       <Stack.Screen name="ClientDashboard" component={ClientDashboard} />  
       <Stack.Screen name="EngineerDashboard" component={EngineerDashboard} /> 
-      <Stack.Screen name="WorkerDashboard" component={WorkerDashboard} />  
+      <Stack.Screen name="WorkerDashboard" component={WorkerDashboard} />
+      <Stack.Screen name="AvailableTasks" component={AvailableTasks} />
+      <Stack.Screen name="TaskStatusUpdate" component={TaskStatusUpdate} />  
     </Stack.Navigator>
   );
 }

@@ -3,36 +3,51 @@ import { StyleSheet } from "react-native";
 export default StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: "#f4f4f4",
+    padding: 20,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
+    color: "#333",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  profileText: {
+    fontSize: 18,
+    fontWeight: "600",
     marginBottom: 10,
     textAlign: "center",
+    color: "#222",
   },
-  taskItem: {
-    padding: 15,
-    backgroundColor: "#fff",
-    marginBottom: 10,
+  statusText: {
+    fontSize: 16,
+    color: "#555",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  statusButton: {
+    padding: 12,
     borderRadius: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    marginVertical: 8,
+    alignItems: "center",
   },
-  button: {
-    backgroundColor: "#007bff",
-    padding: 10,
-    borderRadius: 5,
-    marginTop: 5,
-  },
-  completed: {
+  available: {
     backgroundColor: "#28a745",
   },
+  busy: {
+    backgroundColor: "#dc3545",
+  },
   buttonText: {
+    fontSize: 16,
     color: "#fff",
-    textAlign: "center",
     fontWeight: "bold",
+  },
+  taskButton: {
+    backgroundColor: "#007bff",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 10,
   },
 });

@@ -21,28 +21,30 @@ export default function LoginScreen() {
       setErrorMessage("All fields are required.");
       return;
     }
-
+  
     setLoading(true);
-    setErrorMessage(""); // Clear previous errors
-
+    setErrorMessage("");
+  
     try {
       const response = await axios.post(API_URL, { email, password });
       const { token, user } = response.data;
-
-      if (!token || !user) {
+  
+      if (!token || !user || !user.id) {
         throw new Error("Invalid response from server.");
       }
-
+  
+      console.log("✅ Saving userId to AsyncStorage:", user.id); // ✅ Debug Log
+  
       await AsyncStorage.setItem("authToken", token);
+      await AsyncStorage.setItem("userId", user.id);  // ✅ Store user ID
       await AsyncStorage.setItem("userRole", user.role);
-
-      console.log("✅ User authenticated, navigating...");
-      if (user.role === "Client") {
+  
+      if (user.role === "Worker") {
+        navigation.navigate("WorkerDashboard");
+      } else if (user.role === "Client") {
         navigation.navigate("ClientDashboard");
       } else if (user.role === "Site Engineer") {
         navigation.navigate("EngineerDashboard");
-      } else if (user.role === "Worker") {
-        navigation.navigate("WorkerDashboard");
       } else {
         navigation.navigate("Welcome");
       }
@@ -53,6 +55,7 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
+  
 
   return (
     <View style={styles.container}>

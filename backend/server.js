@@ -38,28 +38,23 @@ app.post("/api/register", async (req, res) => {
   }
 
   try {
-    // Validate role
     const roleQuery = await pool.query("SELECT id FROM roles WHERE role_name = $1", [role]);
     if (roleQuery.rows.length === 0) {
       return res.status(400).json({ error: "Invalid role" });
     }
     const roleId = roleQuery.rows[0].id;
 
-    // Check if user already exists
     const existingUser = await pool.query("SELECT 1 FROM users WHERE email = $1 LIMIT 1", [email]);
     if (existingUser.rows.length > 0) {
       return res.status(400).json({ error: "Email already exists" });
     }
 
-    // Enforce strong password
     if (password.length < 8 || !/\d/.test(password) || !/[!@#$%^&*]/.test(password)) {
       return res.status(400).json({ error: "Password must be at least 8 characters, include a number and a special character." });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert user into DB
     const result = await pool.query(
       "INSERT INTO users (name, email, password, role_id) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role_id",
       [name, email, hashedPassword, roleId]
@@ -81,9 +76,14 @@ app.post("/api/login", async (req, res) => {
   }
 
   try {
-    // Get user from database
+    // ✅ Fetch user details with role and worker status
     const userQuery = await pool.query(
-      "SELECT users.id, users.name, users.email, users.password, roles.role_name FROM users JOIN roles ON users.role_id = roles.id WHERE email = $1 LIMIT 1",
+      `SELECT users.id, users.name, users.email, users.password, roles.role_name, 
+              COALESCE(workers.status, NULL) AS worker_status
+       FROM users 
+       JOIN roles ON users.role_id = roles.id 
+       LEFT JOIN workers ON users.id = workers.id  
+       WHERE users.email = $1 LIMIT 1`,
       [email]
     );
 
@@ -93,28 +93,38 @@ app.post("/api/login", async (req, res) => {
 
     const user = userQuery.rows[0];
 
-    // Compare password
+    // ✅ Validate password
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       return res.status(400).json({ error: "Invalid password" });
     }
 
-    // Generate JWT token
+    // ✅ Check if the user is a worker and NOT already in the `workers` table`
+    if (user.role_name === "Worker" && user.worker_status === null) {
+      const existingWorker = await pool.query("SELECT id FROM workers WHERE id = $1", [user.id]);
+
+      if (existingWorker.rows.length === 0) {
+        await pool.query("INSERT INTO workers (id, name) VALUES ($1, $2)", [user.id, user.name]);
+      }
+    }
+
+    // ✅ Generate JWT token
     const token = jwt.sign(
       { id: user.id, role: user.role_name },
-      SECRET_KEY,
+      process.env.SECRET_KEY || "your_secret_key",
       { expiresIn: "1h" }
     );
 
-    // ✅ Send token in response
+    // ✅ Send response
     res.json({
       message: "Login successful",
-      token: token,
+      token,
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role_name,
+        status: user.worker_status, // ✅ Status remains unchanged until set
       },
     });
   } catch (err) {
@@ -123,5 +133,235 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// **🏗️ Start the server**
+
+// **🟢 Get Worker Profile by ID**
+app.get("/api/worker-profile", async (req, res) => {
+  const { worker_id } = req.query;
+
+  console.log("📌 Worker Profile API Request Received - worker_id:", worker_id); // ✅ Debug Log
+
+  if (!worker_id) {
+    return res.status(400).json({ error: "Worker ID is required" });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT id, name, status FROM workers WHERE id = $1",
+      [worker_id]
+    );
+
+    if (result.rows.length === 0) {
+      console.log("❌ Worker not found in database for ID:", worker_id);
+      return res.status(404).json({ error: "Worker not found" });
+    }
+
+    console.log("✅ Worker Found in Database:", result.rows[0]); // ✅ Debug Log
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("❌ Error fetching worker profile:", error);
+    res.status(500).json({ error: "Failed to fetch worker profile" });
+  }
+});
+
+
+
+// **🟠 Worker Updates Availability**
+app.put("/api/update-status", async (req, res) => {
+  const { worker_id, status } = req.body;
+
+  if (!worker_id || !status) {
+    console.log("❌ Missing worker_id or status in request.");
+    return res.status(400).json({ error: "Worker ID and status are required" });
+  }
+
+  try {
+    console.log(`🔄 Updating Worker ID: ${worker_id} to Status: ${status}`);
+
+    // ✅ Check if worker exists
+    const workerExists = await pool.query("SELECT id FROM workers WHERE id = $1", [worker_id]);
+    if (workerExists.rows.length === 0) {
+      console.log("❌ Worker does not exist in database.");
+      return res.status(404).json({ error: "Worker not found" });
+    }
+
+    // ✅ Update worker status in the database
+    const result = await pool.query(
+      "UPDATE workers SET status = $1 WHERE id = $2 RETURNING id, name, status",
+      [status, worker_id]
+    );
+
+    if (result.rowCount === 0) {
+      console.log("❌ UPDATE query did not modify any rows.");
+      return res.status(500).json({ error: "Failed to update worker status" });
+    }
+
+    console.log(`✅ Worker status successfully updated: ${result.rows[0].status}`);
+
+    res.json({
+      message: `Worker status updated to ${status}`,
+      worker: result.rows[0],
+    });
+  } catch (error) {
+    console.error("❌ Database update error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+
+
+
+
+// ✅ Get Worker Status API
+app.get("/api/worker-status", async (req, res) => {
+  const { worker_id } = req.query;
+
+  if (!worker_id) {
+    return res.status(400).json({ error: "Worker ID is required" });
+  }
+
+  try {
+    const result = await pool.query("SELECT status FROM workers WHERE id = $1", [worker_id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Worker not found" });
+    }
+
+    res.json({ status: result.rows[0].status });
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching worker status" });
+  }
+})
+
+// **🟢 Create Milestone API**
+app.post("/api/create-milestone", async (req, res) => {
+  const { project_id, name, description, deadline } = req.body;
+
+  try {
+    const result = await pool.query(
+      "INSERT INTO milestones (project_id, name, description, deadline) VALUES ($1, $2, $3, $4) RETURNING *",
+      [project_id, name, description, deadline]
+    );
+    res.json({ message: "Milestone created successfully!", milestone: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create milestone" });
+  }
+});
+
+// **🔴 Assign Task to Worker**
+app.post("/api/assign-task", async (req, res) => {
+  const { milestone_id, task_description, start_date, end_date } = req.body;
+
+  try {
+      // Get an available worker
+      const workerResult = await pool.query(
+          "SELECT id FROM workers WHERE status = 'Available' LIMIT 1"
+      );
+
+      if (workerResult.rows.length === 0) {
+          return res.status(400).json({ error: "No available workers" });
+      }
+
+      const worker_id = workerResult.rows[0].id;
+
+      // Assign task to worker
+      const taskResult = await pool.query(
+          "INSERT INTO tasks (milestone_id, worker_id, task_description, start_date, end_date, status) VALUES ($1, $2, $3, $4, $5, 'Assigned') RETURNING *",
+          [milestone_id, worker_id, task_description, start_date, end_date]
+      );
+
+      // Mark worker as busy
+      await pool.query("UPDATE workers SET status = 'Busy' WHERE id = $1", [worker_id]);
+
+      res.json({ message: "Task assigned successfully!", task: taskResult.rows[0] });
+  } catch (error) {
+      console.error("Task assignment error:", error);
+      res.status(500).json({ error: "Failed to assign task" });
+  }
+});
+app.get("/api/worker-tasks", async (req, res) => {
+  const { worker_id } = req.query;
+
+  if (!worker_id) {
+      return res.status(400).json({ error: "Worker ID is required" });
+  }
+
+  try {
+      const result = await pool.query(
+          "SELECT id, task_description AS task, status FROM tasks WHERE worker_id = $1",
+          [worker_id]
+      );
+
+      res.json(result.rows);
+  } catch (error) {
+      res.status(500).json({ error: "Error fetching worker tasks" });
+  }
+});
+
+
+// **🟢 Budget Tracking**
+// app.post("/api/update-budget", async (req, res) => {
+//   const { project_id, new_expense } = req.body;
+
+//   try {
+//     const budget = await pool.query("SELECT total_budget, spent_amount FROM project_budget WHERE project_id = $1", [project_id]);
+
+//     if (budget.rows.length > 0) {
+//       const { total_budget, spent_amount } = budget.rows[0];
+//       const updated_spent = spent_amount + new_expense;
+
+//       if (updated_spent > total_budget) {
+//         return res.json({ status: "over-budget", message: "Budget exceeded!" });
+//       }
+
+//       await pool.query("UPDATE project_budget SET spent_amount = $1 WHERE project_id = $2", [updated_spent, project_id]);
+//       return res.json({ status: "ok", message: "Budget updated." });
+//     }
+
+//     res.status(404).json({ error: "Project not found" });
+
+//   } catch (error) {
+//     res.status(500).json({ error: "Error updating budget" });
+//   }
+// });
+
+app.get("/api/available-tasks", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, task_description, milestone FROM tasks WHERE assigned_worker IS NULL"
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ tasks: [] }); // ✅ Return empty array instead of hanging
+    }
+
+    res.json({ tasks: result.rows });
+  } catch (error) {
+    console.error("❌ Error fetching available tasks:", error);
+    res.status(500).json({ error: "Failed to fetch tasks" });
+  }
+});
+
+app.get("/api/accepted-tasks", async (req, res) => {
+  const { worker_id } = req.query;
+
+  if (!worker_id) {
+    return res.status(400).json({ error: "Worker ID is required" });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT id, task_description AS task, status FROM tasks WHERE assigned_worker = $1",
+      [worker_id]
+    );
+
+    res.json({ tasks: result.rows });
+  } catch (error) {
+    console.error("❌ Error fetching worker tasks:", error);
+    res.status(500).json({ error: "Error fetching worker tasks" });
+  }
+});
+
+
+// **🏗️ Start Server**
 app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));
