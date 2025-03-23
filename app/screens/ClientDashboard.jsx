@@ -13,7 +13,7 @@ import {
 
 import styles from "../styles/ClientDashboard.styles";
 
-const apiKey = "AIzaSyAs82I6c5XpsTyfuEsx6s7NWxGWFfLY8VA"; // Use environment variables in production
+const apiKey = "AIzaSyAs82I6c5XpsTyfuEsx6s7NWxGWFfLY8VA"; // Replace with your actual API Key
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
@@ -21,22 +21,17 @@ export default function ClientDashboard() {
   const navigation = useNavigation();
   const [projectDetails, setProjectDetails] = useState({
     name: "",
-    id:"",
+    id: "",
     budget: "",
     deadline: "",
     requirements: "",
   });
 
   const [projectPlan, setProjectPlan] = useState("");
-<<<<<<< HEAD
-=======
-  const [id, setId] = useState("")
->>>>>>> 35216fa2798e9e980c9e49aedbf134a1e38c61ec
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [planGenerated, setPlanGenerated] = useState(false);
 
-  // **Generate Project Plan using Gemini API**
   const generateProjectPlan = async () => {
     if (!projectDetails.name || !projectDetails.budget || !projectDetails.deadline || !projectDetails.requirements) {
       Alert.alert("Error", "All fields are required.");
@@ -65,15 +60,7 @@ export default function ClientDashboard() {
       - Project ID: ${projectDetails.id}
       - Budget: ${projectDetails.budget} INR
       - Deadline: ${projectDetails.deadline}
-      - Requirements: ${projectDetails.requirements}
-
-      The project plan should include:
-      - Phase-wise breakdown (Planning, Foundation, Framing, Roofing, Interiors)
-      - Estimated time for each phase
-      - Cost distribution per phase
-      - Materials required
-      - Workforce allocation
-      - Risk factors and mitigation strategies`;
+      - Requirements: ${projectDetails.requirements}`;
 
       const result = await chatSession.sendMessage(prompt);
       setProjectPlan(result.response.text());
@@ -86,7 +73,6 @@ export default function ClientDashboard() {
     }
   };
 
-  // **Handle Plan Rejection**
   const handleRejectPlan = () => {
     setProjectPlan("");
     setTasks([]);
@@ -94,7 +80,6 @@ export default function ClientDashboard() {
     Alert.alert("Plan Rejected", "Please resubmit your project details.");
   };
 
-  // **Handle Plan Acceptance & Task Division**
   const handleAcceptPlan = async () => {
     if (!projectPlan) {
       Alert.alert("Error", "No plan to accept.");
@@ -104,7 +89,6 @@ export default function ClientDashboard() {
     setLoading(true);
 
     try {
-      // **Generate tasks from the accepted plan**
       const chatSession = model.startChat({
         generationConfig: {
           temperature: 1,
@@ -116,29 +100,27 @@ export default function ClientDashboard() {
         history: [],
       });
 
-      const prompt = `From the given construction project plan, extract the key tasks and assign milestone deadlines:
-      Plan: ${projectPlan}
-
-      Format the output as JSON with:
-      [
-        { "task": "Task Name", "milestone": "YYYY-MM-DD" },
-        { "task": "Next Task", "milestone": "YYYY-MM-DD" }
-      ]`;
+      const prompt = `From the given construction project plan, extract the key tasks and assign milestone deadlines as JSON.`;
 
       const result = await chatSession.sendMessage(prompt);
-      const extractedTasks = JSON.parse(result.response.text());
+      const responseText = await result.response.text();
+      console.log("Task Extraction Response:", responseText);
 
-      setTasks(extractedTasks);
+      let extractedTasks = [];
+      try {
+        extractedTasks = JSON.parse(responseText);
+        setTasks(extractedTasks);
+      } catch (error) {
+        console.error("JSON Parse Error:", error);
+        Alert.alert("Error", "Failed to parse tasks from response.");
+        return;
+      }
 
-      // **Save to PostgreSQL**
       const response = await fetch("http://localhost:5000/api/save-project", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: projectDetails.name,
-          budget: projectDetails.budget,
-          deadline: projectDetails.deadline,
-          requirements: projectDetails.requirements,
+          ...projectDetails,
           plan: projectPlan,
           tasks: extractedTasks,
         }),
@@ -147,10 +129,11 @@ export default function ClientDashboard() {
       if (response.ok) {
         Alert.alert("Success", "Project plan accepted and tasks set.");
       } else {
-        Alert.alert("Error", "Failed to save project.");
+        const errorData = await response.json();
+        Alert.alert("Error", errorData.error || "Failed to save project.");
       }
     } catch (error) {
-      console.error("Error saving project:", error);
+      console.error("Error:", error);
       Alert.alert("Error", "Failed to process tasks.");
     } finally {
       setLoading(false);
@@ -161,46 +144,18 @@ export default function ClientDashboard() {
     <ScrollView style={styles.container}>
       <Text style={styles.header}>Client Dashboard</Text>
 
-      {/* Project Details Form */}
       <View style={styles.section}>
         <Text style={styles.subHeader}>Enter Project Details</Text>
 
-        <TextInput
-          placeholder="Project Name"
-          style={styles.input}
-          value={projectDetails.name}
-          onChangeText={(text) => setProjectDetails({ ...projectDetails, name: text })}
-        />
-
-        <TextInput
-          placeholder="Project ID"
-          style={styles.input}
-          value={projectDetails.id}
-          onChangeText={(text) => setProjectDetails({ ...projectDetails, id: text })}
-        />
-
-        <TextInput
-          placeholder="Budget (in INR)"
-          style={styles.input}
-          keyboardType="numeric"
-          value={projectDetails.budget}
-          onChangeText={(text) => setProjectDetails({ ...projectDetails, budget: text })}
-        />
-
-        <TextInput
-          placeholder="Deadline (YYYY-MM-DD)"
-          style={styles.input}
-          value={projectDetails.deadline}
-          onChangeText={(text) => setProjectDetails({ ...projectDetails, deadline: text })}
-        />
-
-        <TextInput
-          placeholder="Project Requirements"
-          style={[styles.input, { height: 80 }]}
-          multiline
-          value={projectDetails.requirements}
-          onChangeText={(text) => setProjectDetails({ ...projectDetails, requirements: text })}
-        />
+        {Object.keys(projectDetails).map((key) => (
+          <TextInput
+            key={key}
+            placeholder={key.charAt(0).toUpperCase() + key.slice(1)}
+            style={styles.input}
+            value={projectDetails[key]}
+            onChangeText={(text) => setProjectDetails((prev) => ({ ...prev, [key]: text }))}
+          />
+        ))}
 
         <TouchableOpacity style={styles.button} onPress={generateProjectPlan}>
           <Text style={styles.buttonText}>Generate Project Plan</Text>
