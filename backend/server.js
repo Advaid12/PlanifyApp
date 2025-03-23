@@ -166,51 +166,6 @@ app.get("/api/worker-profile", async (req, res) => {
 
 const { v4: uuidv4 } = require("uuid");
 
-// app.post("/api/save-project-plan", async (req, res) => {
-//   const { project_id, plan } = req.body;
-
-//   if (!project_id || !plan) {
-//     return res.status(400).json({ error: "Project ID and Plan are required" });
-//   }
-
-//   try {
-//     console.log("🔄 Saving project plan for:", project_id);
-
-//     const result = await pool.query(
-//       "UPDATE projects SET plan = $1 WHERE project_id = $2 RETURNING *",
-//       [plan, project_id]
-//     );
-
-//     if (result.rowCount === 0) {
-//       return res.status(404).json({ error: "Project not found" });
-//     }
-
-//     console.log("✅ Project Plan Saved:", result.rows[0]);
-//     res.status(200).json({ message: "Project plan saved", project: result.rows[0] });
-//   } catch (error) {
-//     console.error("❌ Error saving project plan:", error);
-//     res.status(500).json({ error: "Server error" });
-//   }
-// });
-app.post("/api/save-project", async (req, res) => {
-  const { name, description, owner_id, budget } = req.body;
-
-  if (!name || !description || !owner_id || budget === undefined) {
-    return res.status(400).json({ error: "All fields are required" });
-  }
-
-  try {
-    const result = await pool.query(
-      "INSERT INTO projects (name, description, owner_id, budget) VALUES ($1, $2, $3, $4) RETURNING *",
-      [name, description, owner_id, budget]
-    );
-
-    res.status(201).json({ message: "Project saved successfully", project: result.rows[0] });
-  } catch (error) {
-    console.error("Error saving project:", error);
-    res.status(500).json({ error: "Failed to save project" });
-  }
-});
 
 
 
@@ -471,6 +426,32 @@ app.get("/api/accepted-tasks", async (req, res) => {
   }
 });
 
+// **🟢 Save Project Details API**
+app.post("/api/save-project-details", async (req, res) => {
+  const { projectName, projectId, budget, deadline, requirements } = req.body;
+
+  if (!projectName || !projectId || !budget || !deadline || !requirements) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  try {
+    const projectExists = await pool.query("SELECT id FROM projects WHERE id = $1", [projectId]);
+
+    if (projectExists.rows.length > 0) {
+      return res.status(400).json({ error: "Project with this ID already exists" });
+    }
+
+    const result = await pool.query(
+      "INSERT INTO projects (id, name, budget, deadline, requirements) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [projectId, projectName, budget, deadline, requirements]
+    );
+
+    res.status(201).json({ message: "Project details saved successfully", project: result.rows[0] });
+  } catch (error) {
+    console.error("Error saving project details:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 // **🏗️ Start Server**
 app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));

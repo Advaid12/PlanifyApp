@@ -85,9 +85,9 @@ export default function ClientDashboard() {
       Alert.alert("Error", "No plan to accept.");
       return;
     }
-
+  
     setLoading(true);
-
+  
     try {
       const chatSession = model.startChat({
         generationConfig: {
@@ -99,13 +99,12 @@ export default function ClientDashboard() {
         },
         history: [],
       });
-
+  
       const prompt = `From the given construction project plan, extract the key tasks and assign milestone deadlines as JSON.`;
-
+  
       const result = await chatSession.sendMessage(prompt);
       const responseText = await result.response.text();
-      console.log("Task Extraction Response:", responseText);
-
+  
       let extractedTasks = [];
       try {
         extractedTasks = JSON.parse(responseText);
@@ -115,7 +114,7 @@ export default function ClientDashboard() {
         Alert.alert("Error", "Failed to parse tasks from response.");
         return;
       }
-
+  
       const response = await fetch("http://localhost:5000/api/save-project", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -125,12 +124,30 @@ export default function ClientDashboard() {
           tasks: extractedTasks,
         }),
       });
-
-      if (response.ok) {
-        Alert.alert("Success", "Project plan accepted and tasks set.");
-      } else {
+  
+      if (!response.ok) {
         const errorData = await response.json();
         Alert.alert("Error", errorData.error || "Failed to save project.");
+        return;
+      }
+  
+      const saveDetailsResponse = await fetch("http://localhost:5000/api/save-project-details", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectName: projectDetails.name,
+          projectId: projectDetails.id,
+          budget: projectDetails.budget,
+          deadline: projectDetails.deadline,
+          requirements: projectDetails.requirements,
+        }),
+      });
+  
+      if (saveDetailsResponse.ok) {
+        Alert.alert("Success", "Project plan accepted and tasks set. Project details saved.");
+      } else {
+        const errorData = await saveDetailsResponse.json();
+        Alert.alert("Error", errorData.error || "Failed to save project details.");
       }
     } catch (error) {
       console.error("Error:", error);
@@ -139,6 +156,7 @@ export default function ClientDashboard() {
       setLoading(false);
     }
   };
+  
 
   return (
     <ScrollView style={styles.container}>
