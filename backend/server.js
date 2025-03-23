@@ -163,86 +163,8 @@ app.get("/api/worker-profile", async (req, res) => {
   }
 });
 
-// **🟢 Create a New Project**
-// app.post("/api/create-project", async (req, res) => {
-//   const { name, budget, deadline, requirements } = req.body;
 
-//   if (!name || !budget || !deadline || !requirements) {
-//     return res.status(400).json({ error: "All fields are required" });
-//   }
-
-//   try {
-//     console.log("🔄 Creating project with:", { name, budget, deadline, requirements });
-
-//     const result = await pool.query(
-//       "INSERT INTO projects (name, budget, deadline, requirements) VALUES ($1, $2, $3, $4) RETURNING id",
-//       [name, budget, deadline, requirements]
-//     );
-
-//     console.log("✅ Project Created:", result.rows[0]);
-//     res.status(201).json({ message: "Project created", project_id: result.rows[0].id });
-//   } catch (error) {
-//     console.error("❌ Error creating project:", error);
-//     res.status(500).json({ error: "Server error" });
-//   }
-// });
 const { v4: uuidv4 } = require("uuid");
-
-app.post("/api/create-project", async (req, res) => {
-  const { project_id, name, budget, deadline } = req.body;
-
-  if (!name || !budget || !deadline) {
-    return res.status(400).json({ error: "All fields are required" });
-  }
-
-  try {
-    // Use provided project_id or generate a new one
-    const finalProjectId = project_id || uuidv4();
-
-    const result = await pool.query(
-      "INSERT INTO projects (project_id, name, budget, deadline) VALUES ($1, $2, $3, $4) RETURNING project_id",
-      [finalProjectId, name, budget, deadline]
-    );
-
-    res.status(201).json({ message: "Project created", project_id: result.rows[0].project_id });
-  } catch (error) {
-    console.error("Error creating project:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-
-
-
-
-// **🟢 Save Generated Project Plan**
-// app.post("/api/create-project", async (req, res) => {
-//   const { name, budget, deadline, requirements } = req.body;
-
-//   if (!name || !budget || !deadline || !requirements) {
-//     return res.status(400).json({ error: "All fields are required" });
-//   }
-
-//   try {
-//     console.log("🔄 Creating project with:", { name, budget, deadline, requirements });
-
-//     const result = await pool.query(
-//       "INSERT INTO projects (name, budget, deadline, requirements) VALUES ($1, $2, $3, $4) RETURNING id",
-//       [name, budget, deadline, requirements]
-//     );
-
-//     console.log("✅ Project Created:", result.rows[0]);
-//     res.status(201).json({ message: "Project created", project_id: result.rows[0].id });
-//   } catch (error) {
-//     console.error("❌ Error creating project:", error);
-//     res.status(500).json({ error: "Server error" });
-//   }
-// });
-
-
-
-// ✅ Ensure uuid is only imported once at the top of server.js
-//const { v4: uuidv4 } = require("uuid");
 
 // app.post("/api/save-project-plan", async (req, res) => {
 //   const { project_id, plan } = req.body;
@@ -270,7 +192,25 @@ app.post("/api/create-project", async (req, res) => {
 //     res.status(500).json({ error: "Server error" });
 //   }
 // });
+app.post("/api/save-project", async (req, res) => {
+  const { name, description, owner_id, budget } = req.body;
 
+  if (!name || !description || !owner_id || budget === undefined) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  try {
+    const result = await pool.query(
+      "INSERT INTO projects (name, description, owner_id, budget) VALUES ($1, $2, $3, $4) RETURNING *",
+      [name, description, owner_id, budget]
+    );
+
+    res.status(201).json({ message: "Project saved successfully", project: result.rows[0] });
+  } catch (error) {
+    console.error("Error saving project:", error);
+    res.status(500).json({ error: "Failed to save project" });
+  }
+});
 
 
 

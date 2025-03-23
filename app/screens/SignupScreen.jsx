@@ -2,10 +2,6 @@ import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import React, { useState } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
-<<<<<<< HEAD
-import styles from "../styles/SignupScreen.styles";
-=======
-
 import styles from "../styles/SignupScreen.styles";
 
 export default function SignupScreen({ navigation }) {
@@ -62,7 +58,7 @@ export default function SignupScreen({ navigation }) {
 // import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 // import styles from "../styles/SignupScreen.styles";
->>>>>>> 25da85335aa9c8a499f2e0bda572ea8289bb0aca
+
 
 // export default function SignupScreen({ navigation }) {
 //   const [name, setName] = useState("");
