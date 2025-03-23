@@ -21,12 +21,14 @@ export default function ClientDashboard() {
   const navigation = useNavigation();
   const [projectDetails, setProjectDetails] = useState({
     name: "",
+    id:"",
     budget: "",
     deadline: "",
     requirements: "",
   });
 
   const [projectPlan, setProjectPlan] = useState("");
+  const [id, setId] = useState("")
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [planGenerated, setPlanGenerated] = useState(false);
@@ -57,7 +59,8 @@ export default function ClientDashboard() {
 
       const prompt = `Generate a detailed construction project plan with the following details:
       - Project Name: ${projectDetails.name}
-      - Budget: ${projectDetails.budget} USD
+      - Project ID: ${projectDetails.id}
+      - Budget: ${projectDetails.budget} INR
       - Deadline: ${projectDetails.deadline}
       - Requirements: ${projectDetails.requirements}
 
@@ -167,7 +170,14 @@ export default function ClientDashboard() {
         />
 
         <TextInput
-          placeholder="Budget (in USD)"
+          placeholder="Project ID"
+          style={styles.input}
+          value={projectDetails.id}
+          onChangeText={(text) => setProjectDetails({ ...projectDetails, id: text })}
+        />
+
+        <TextInput
+          placeholder="Budget (in INR)"
           style={styles.input}
           keyboardType="numeric"
           value={projectDetails.budget}
