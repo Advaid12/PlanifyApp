@@ -442,8 +442,8 @@ app.post("/api/save-project-details", async (req, res) => {
     }
 
     const result = await pool.query(
-      "INSERT INTO projects (id, name, budget, deadline, requirements) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [projectId, projectName, budget, deadline, requirements]
+      "INSERT INTO projects (project_id, name, budget, deadline) VALUES ($1, $2, $3, $4) RETURNING *",
+      [projectId, projectName, budget, deadline]
     );
 
     res.status(201).json({ message: "Project details saved successfully", project: result.rows[0] });
