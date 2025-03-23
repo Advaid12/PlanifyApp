@@ -104,6 +104,7 @@ export default function ClientDashboard() {
   
       const result = await chatSession.sendMessage(prompt);
       const responseText = await result.response.text();
+      console.log("Task Extraction Response:", responseText);
   
       let extractedTasks = [];
       try {
@@ -115,39 +116,13 @@ export default function ClientDashboard() {
         return;
       }
   
-      const response = await fetch("http://localhost:5000/api/save-project", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...projectDetails,
-          plan: projectPlan,
-          tasks: extractedTasks,
-        }),
-      });
-  
-      if (!response.ok) {
-        const errorData = await response.json();
-        Alert.alert("Error", errorData.error || "Failed to save project.");
-        return;
-      }
-  
-      const saveDetailsResponse = await fetch("http://localhost:5000/api/save-project-details", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectName: projectDetails.name,
-          projectId: projectDetails.id,
-          budget: projectDetails.budget,
-          deadline: projectDetails.deadline,
-          requirements: projectDetails.requirements,
-        }),
-      });
-  
-      if (saveDetailsResponse.ok) {
-        Alert.alert("Success", "Project plan accepted and tasks set. Project details saved.");
-      } else {
-        const errorData = await saveDetailsResponse.json();
-        Alert.alert("Error", errorData.error || "Failed to save project details.");
+      let name = projectDetails.name, id = projectDetails.id, budjet = projectDetails.budget, deadline = projectDetails.deadline;
+
+      try {
+        await axios.post("http://localhost:5000/api/save-project-details", {name, id , budjet, deadline });
+        Alert.alert("Registration Successful!", "You can now log in.");
+      } catch (error) {
+        
       }
     } catch (error) {
       console.error("Error:", error);
