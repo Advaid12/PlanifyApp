@@ -21,18 +21,20 @@ export default function ClientDashboard() {
   });
 
   const [projectPlan, setProjectPlan] = useState("");
+  const [milestones, setMilestones] = useState([]);
   const [loading, setLoading] = useState(false);
   const [planGenerated, setPlanGenerated] = useState(false);
 
-  // Generate project plan using Gemini API
+  // Generate project plan with milestones
   const generateProjectPlan = async () => {
-    if (!projectDetails.name || !projectDetails.budget ||!projectDetails.beginningDate || !projectDetails.deadline || !projectDetails.requirements) {
+    if (!projectDetails.name || !projectDetails.budget || !projectDetails.beginningDate || !projectDetails.deadline || !projectDetails.requirements) {
       Alert.alert("Error", "All fields are required.");
       return;
     }
 
     setLoading(true);
     setProjectPlan("");
+    setMilestones([]);
     setPlanGenerated(false);
 
     try {
@@ -47,16 +49,66 @@ export default function ClientDashboard() {
         history: [],
       });
 
-      const prompt = `Generate a detailed construction project plan with the following details:
-      - Project Name: ${projectDetails.name}
-      - Project ID: ${projectDetails.id}
-      - Budget: ${projectDetails.budget} INR
-      - BeginningDate: ${projectDetails.beginningDate}
-      - Deadline: ${projectDetails.deadline}
-      - Requirements: ${projectDetails.requirements}`;
+      const prompt = `Generate a **detailed construction project plan** with the following details:
+      - **Project Name**: ${projectDetails.name}
+      - **Project ID**: ${projectDetails.id}
+      - **Budget**: ${projectDetails.budget} INR
+      - **Start Date**: ${projectDetails.beginningDate}
+      - **Deadline**: ${projectDetails.deadline}
+      - **Requirements**: ${projectDetails.requirements}
+
+      **Project Plan Must Include**:
+      1️⃣ Overview  
+      2️⃣ Key Phases (Excavation, Foundation, Roofing, etc.)  
+      3️⃣ Budget Breakdown  
+      4️⃣ Timeline  
+      5️⃣ Resources Required  
+      6️⃣ Risks & Mitigation Strategies  
+
+      **Milestones** (in valid JSON format at the end):
+      {
+        "milestones": [
+          { "name": "Site Preparation", "date": "2025-04-01", "deliverable": "Cleared and leveled site" },
+          { "name": "Foundation Completed", "date": "2025-04-15", "deliverable": "Concrete foundation ready" },
+          { "name": "Structural Framing", "date": "2025-05-10", "deliverable": "Steel framework completed" },
+          { "name": "Roof Installation", "date": "2025-05-25", "deliverable": "Roofing completed" },
+          { "name": "Final Inspection", "date": "2025-06-10", "deliverable": "Ready for handover" }
+        ]
+      }`;
 
       const result = await chatSession.sendMessage(prompt);
-      setProjectPlan(result.response.text());
+
+      if (!result || !result.response || !result.response.text) {
+        throw new Error("Invalid response from Gemini API.");
+      }
+
+      let responseText = result.response.text();
+      console.log("Raw API Response:", responseText);
+
+      // ✅ Remove unwanted markdown formatting
+      responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
+
+      // ✅ Extract milestones using regex
+      const milestoneRegex = /{[\s\S]*}/;
+      const milestoneMatch = responseText.match(milestoneRegex);
+
+      let parsedMilestones = [];
+      if (milestoneMatch) {
+        try {
+          const jsonString = milestoneMatch[0];
+          const jsonData = JSON.parse(jsonString);
+          parsedMilestones = jsonData.milestones || [];
+        } catch (error) {
+          console.error("JSON Parsing Error:", error);
+          Alert.alert("Error", "Failed to parse milestones.");
+        }
+      }
+
+      // ✅ Extract the main project plan without the milestones JSON
+      const cleanProjectPlan = responseText.replace(milestoneRegex, "").trim();
+
+      setProjectPlan(cleanProjectPlan);
+      setMilestones(parsedMilestones);
       setPlanGenerated(true);
     } catch (error) {
       console.error("API Error:", error);
@@ -80,8 +132,9 @@ export default function ClientDashboard() {
         project_id: projectDetails.id,
         name: projectDetails.name,
         budget: projectDetails.budget,
-        beginningDate:projectDetails.beginningDate,
+        beginningDate: projectDetails.beginningDate,
         deadline: projectDetails.deadline,
+        milestones: milestones, // ✅ Save milestones along with the project
       });
 
       Alert.alert("Success", "Project details saved successfully!");
@@ -96,6 +149,7 @@ export default function ClientDashboard() {
   // Reject plan and reset the state
   const handleRejectPlan = () => {
     setProjectPlan("");
+    setMilestones([]);
     setPlanGenerated(false);
     Alert.alert("Plan Rejected", "Please resubmit your project details.");
   };
@@ -129,7 +183,14 @@ export default function ClientDashboard() {
           <Text style={styles.subHeader}>Generated Project Plan</Text>
           <Text style={styles.text}>{projectPlan}</Text>
 
-          {/* Show Accept and Reject buttons only after the plan is generated */}
+          <Text style={styles.subHeader}>Milestones</Text>
+          {milestones.map((milestone, index) => (
+            <View key={index} style={styles.milestoneItem}>
+              <Text style={styles.text}>🔹 {milestone.name} - {milestone.date}</Text>
+              <Text style={styles.text}>📌 {milestone.deliverable}</Text>
+            </View>
+          ))}
+
           <TouchableOpacity style={[styles.button, { backgroundColor: "green" }]} onPress={handleAcceptPlan}>
             <Text style={styles.buttonText}>Accept Plan</Text>
           </TouchableOpacity>

@@ -298,21 +298,6 @@ app.get("/api/worker-status", async (req, res) => {
   }
 })
 
-// **🟢 Create Milestone API**
-app.post("/api/create-milestone", async (req, res) => {
-  const { project_id, name, description, deadline } = req.body;
-
-  try {
-    const result = await pool.query(
-      "INSERT INTO milestones (project_id, name, description, deadline) VALUES ($1, $2, $3, $4) RETURNING *",
-      [project_id, name, description, deadline]
-    );
-    res.json({ message: "Milestone created successfully!", milestone: result.rows[0] });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to create milestone" });
-  }
-});
-
 // **🔴 Assign Task to Worker**
 app.post("/api/assign-task", async (req, res) => {
   const { milestone_id, task_description, start_date, end_date } = req.body;
@@ -455,6 +440,12 @@ app.post("/api/save-project-details", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+
+
+
+
+
 
 
 // **🏗️ Start Server**
