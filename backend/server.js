@@ -429,24 +429,24 @@ app.get("/api/accepted-tasks", async (req, res) => {
 
 // **🟢 Save Project Details API**
 app.post("/api/save-project-details", async (req, res) => {
-  const { project_id, name, budget, deadline } = req.body;
+  const { project_id, name, budget, beginningDate, deadline } = req.body;
 
-  if (!project_id || !name || !budget || !deadline) {
+  if (!project_id || !name || !budget || !beginningDate || !deadline) {
     return res.status(400).json({ error: "All fields are required" });
   }
 
   try {
-    // Corrected check: Verify if project_id already exists
+    // Check if project_id already exists
     const projectExists = await pool.query("SELECT id FROM projects WHERE project_id = $1", [project_id]);
 
     if (projectExists.rows.length > 0) {
       return res.status(400).json({ error: "Project with this ID already exists" });
     }
 
-    // Corrected insert statement
+    // Insert project details into the database
     const result = await pool.query(
-      "INSERT INTO projects (project_id, name, budget, deadline) VALUES ($1, $2, $3, $4) RETURNING *",
-      [project_id, name, budget, deadline]
+      "INSERT INTO projects (project_id, name, budget, beginningDate, deadline) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [project_id, name, budget, beginningDate, deadline]
     );
 
     res.status(201).json({ message: "Project details saved successfully", project: result.rows[0] });
@@ -455,6 +455,7 @@ app.post("/api/save-project-details", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 // **🏗️ Start Server**
 app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));

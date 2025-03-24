@@ -15,6 +15,7 @@ export default function ClientDashboard() {
     name: "",
     id: "",
     budget: "",
+    beginningDate: "",
     deadline: "",
     requirements: "",
   });
@@ -25,7 +26,7 @@ export default function ClientDashboard() {
 
   // Generate project plan using Gemini API
   const generateProjectPlan = async () => {
-    if (!projectDetails.name || !projectDetails.budget || !projectDetails.deadline || !projectDetails.requirements) {
+    if (!projectDetails.name || !projectDetails.budget ||!projectDetails.beginningDate || !projectDetails.deadline || !projectDetails.requirements) {
       Alert.alert("Error", "All fields are required.");
       return;
     }
@@ -50,6 +51,7 @@ export default function ClientDashboard() {
       - Project Name: ${projectDetails.name}
       - Project ID: ${projectDetails.id}
       - Budget: ${projectDetails.budget} INR
+      - BeginningDate: ${projectDetails.beginningDate}
       - Deadline: ${projectDetails.deadline}
       - Requirements: ${projectDetails.requirements}`;
 
@@ -78,6 +80,7 @@ export default function ClientDashboard() {
         project_id: projectDetails.id,
         name: projectDetails.name,
         budget: projectDetails.budget,
+        beginningDate:projectDetails.beginningDate,
         deadline: projectDetails.deadline,
       });
 
