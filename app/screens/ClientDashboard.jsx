@@ -1,16 +1,8 @@
+import axios from "axios";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useNavigation } from "@react-navigation/native";
 import React, { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-
+import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import styles from "../styles/ClientDashboard.styles";
 
 const apiKey = "AIzaSyC8pRmxdohVeqKVX_Rqyn4I4fn9Eh3KrVA"; 
@@ -28,10 +20,10 @@ export default function ClientDashboard() {
   });
 
   const [projectPlan, setProjectPlan] = useState("");
-  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [planGenerated, setPlanGenerated] = useState(false);
 
+  // Generate project plan using Gemini API
   const generateProjectPlan = async () => {
     if (!projectDetails.name || !projectDetails.budget || !projectDetails.deadline || !projectDetails.requirements) {
       Alert.alert("Error", "All fields are required.");
@@ -40,7 +32,6 @@ export default function ClientDashboard() {
 
     setLoading(true);
     setProjectPlan("");
-    setTasks([]);
     setPlanGenerated(false);
 
     try {
@@ -73,65 +64,38 @@ export default function ClientDashboard() {
     }
   };
 
-  const handleRejectPlan = () => {
-    setProjectPlan("");
-    setTasks([]);
-    setPlanGenerated(false);
-    Alert.alert("Plan Rejected", "Please resubmit your project details.");
-  };
-
+  // Accept plan and save project details in the database
   const handleAcceptPlan = async () => {
     if (!projectPlan) {
       Alert.alert("Error", "No plan to accept.");
       return;
     }
-  
-    setLoading(true);
-  
-    try {
-      const chatSession = model.startChat({
-        generationConfig: {
-          temperature: 1,
-          topP: 0.95,
-          topK: 40,
-          maxOutputTokens: 2048,
-          responseMimeType: "text/plain",
-        },
-        history: [],
-      });
-  
-      const prompt = `From the given construction project plan, extract the key tasks and assign milestone deadlines as JSON.`;
-  
-      const result = await chatSession.sendMessage(prompt);
-      const responseText = await result.response.text();
-      console.log("Task Extraction Response:", responseText);
-  
-      let extractedTasks = [];
-      try {
-        extractedTasks = JSON.parse(responseText);
-        setTasks(extractedTasks);
-      } catch (error) {
-        console.error("JSON Parse Error:", error);
-        Alert.alert("Error", "Failed to parse tasks from response.");
-        return;
-      }
-  
-      let name = projectDetails.name, id = projectDetails.id, budjet = projectDetails.budget, deadline = projectDetails.deadline;
 
-      try {
-        await axios.post("http://localhost:5000/api/save-project-details", {name, id , budjet, deadline });
-        Alert.alert("Registration Successful!", "You can now log in.");
-      } catch (error) {
-        
-      }
+    setLoading(true);
+
+    try {
+      await axios.post("http://localhost:5000/api/save-project-details", {
+        project_id: projectDetails.id,
+        name: projectDetails.name,
+        budget: projectDetails.budget,
+        deadline: projectDetails.deadline,
+      });
+
+      Alert.alert("Success", "Project details saved successfully!");
     } catch (error) {
-      console.error("Error:", error);
-      Alert.alert("Error", "Failed to process tasks.");
+      console.error("Error saving project:", error);
+      Alert.alert("Error", "Failed to save project details.");
     } finally {
       setLoading(false);
     }
   };
-  
+
+  // Reject plan and reset the state
+  const handleRejectPlan = () => {
+    setProjectPlan("");
+    setPlanGenerated(false);
+    Alert.alert("Plan Rejected", "Please resubmit your project details.");
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -157,11 +121,12 @@ export default function ClientDashboard() {
 
       {loading && <ActivityIndicator size="large" color="#007bff" />}
 
-      {projectPlan !== "" && (
+      {planGenerated && (
         <View style={styles.section}>
           <Text style={styles.subHeader}>Generated Project Plan</Text>
           <Text style={styles.text}>{projectPlan}</Text>
 
+          {/* Show Accept and Reject buttons only after the plan is generated */}
           <TouchableOpacity style={[styles.button, { backgroundColor: "green" }]} onPress={handleAcceptPlan}>
             <Text style={styles.buttonText}>Accept Plan</Text>
           </TouchableOpacity>

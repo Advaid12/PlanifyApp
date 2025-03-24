@@ -13,6 +13,7 @@ const SECRET_KEY = process.env.SECRET_KEY || "your_secret_key";
 app.use(express.json());
 app.use(cors({ origin: "*", credentials: true }));
 app.use(cookieParser());
+app.use(cors());
 
 // **✅ PostgreSQL Connection**
 const pool = new Pool({
@@ -428,22 +429,24 @@ app.get("/api/accepted-tasks", async (req, res) => {
 
 // **🟢 Save Project Details API**
 app.post("/api/save-project-details", async (req, res) => {
-  const { projectName, projectId, budget, deadline, requirements } = req.body;
+  const { project_id, name, budget, deadline } = req.body;
 
-  if (!projectName || !projectId || !budget || !deadline || !requirements) {
+  if (!project_id || !name || !budget || !deadline) {
     return res.status(400).json({ error: "All fields are required" });
   }
 
   try {
-    const projectExists = await pool.query("SELECT id FROM projects WHERE id = $1", [projectId]);
+    // Corrected check: Verify if project_id already exists
+    const projectExists = await pool.query("SELECT id FROM projects WHERE project_id = $1", [project_id]);
 
     if (projectExists.rows.length > 0) {
       return res.status(400).json({ error: "Project with this ID already exists" });
     }
 
+    // Corrected insert statement
     const result = await pool.query(
       "INSERT INTO projects (project_id, name, budget, deadline) VALUES ($1, $2, $3, $4) RETURNING *",
-      [projectId, projectName, budget, deadline]
+      [project_id, name, budget, deadline]
     );
 
     res.status(201).json({ message: "Project details saved successfully", project: result.rows[0] });
