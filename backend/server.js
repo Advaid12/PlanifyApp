@@ -5,15 +5,20 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 const cookieParser = require("cookie-parser");
+const router = express.Router();
+const bodyParser = require("body-parser");
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
 const SECRET_KEY = process.env.SECRET_KEY || "your_secret_key";
 
 app.use(express.json());
 app.use(cors({ origin: "*", credentials: true }));
 app.use(cookieParser());
 app.use(cors());
+app.use(bodyParser.json()); 
 
 // **✅ PostgreSQL Connection**
 const pool = new Pool({
@@ -412,7 +417,7 @@ app.get("/api/accepted-tasks", async (req, res) => {
   }
 });
 
-// **🟢 Save Project Details API**
+// // **🟢 Save Project Details API**
 app.post("/api/save-project-details", async (req, res) => {
   const { project_id, name, budget, beginningDate, deadline } = req.body;
 
@@ -441,6 +446,35 @@ app.post("/api/save-project-details", async (req, res) => {
   }
 });
 
+
+// ✅ Save milestones route
+app.post("/api/save-milestone", async (req, res) => {
+  const { project_id, milestone_name, description, budget, beginningDate, deadline, status } = req.body;
+
+  if (!project_id || !milestone_name || !budget || !beginningDate || !deadline || !status) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  try {
+    // Check if the project exists before inserting the milestone
+    const projectExists = await pool.query("SELECT id FROM projects WHERE project_id = $1", [project_id]);
+
+    if (projectExists.rows.length === 0) {
+      return res.status(400).json({ error: "Project ID does not exist" });
+    }
+
+    // Insert milestone details into the database
+    const result = await pool.query(
+      "INSERT INTO milestones (project_id, milestone_name, description, budget, beginningdate, deadline, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+      [project_id, milestone_name, description, budget, beginningDate, deadline, status]
+    );
+
+    res.status(201).json({ message: "Milestone saved successfully", milestone: result.rows[0] });
+  } catch (error) {
+    console.error("Error saving milestone:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 
 

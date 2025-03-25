@@ -5,7 +5,8 @@ import React, { useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import styles from "../styles/ClientDashboard.styles";
 
-const apiKey = "AIzaSyC8pRmxdohVeqKVX_Rqyn4I4fn9Eh3KrVA"; 
+// Initialize Google AI Model
+const apiKey = "AIzaSyB3EzlaDTWttmIag3G-VemU8pKqFFp4vEI";
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
@@ -25,18 +26,24 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(false);
   const [planGenerated, setPlanGenerated] = useState(false);
 
-  // Generate project plan with milestones
+  // ✅ Generate Project Plan with Milestones
   const generateProjectPlan = async () => {
-    if (!projectDetails.name || !projectDetails.budget || !projectDetails.beginningDate || !projectDetails.deadline || !projectDetails.requirements) {
+    if (
+      !projectDetails.name ||
+      !projectDetails.budget ||
+      !projectDetails.beginningDate ||
+      !projectDetails.deadline ||
+      !projectDetails.requirements
+    ) {
       Alert.alert("Error", "All fields are required.");
       return;
     }
-
+  
     setLoading(true);
     setProjectPlan("");
     setMilestones([]);
     setPlanGenerated(false);
-
+  
     try {
       const chatSession = model.startChat({
         generationConfig: {
@@ -48,105 +55,140 @@ export default function ClientDashboard() {
         },
         history: [],
       });
-
-      const prompt = `Generate a **detailed construction project plan** with the following details:
-      - **Project Name**: ${projectDetails.name}
-      - **Project ID**: ${projectDetails.id}
-      - **Budget**: ${projectDetails.budget} INR
-      - **Start Date**: ${projectDetails.beginningDate}
-      - **Deadline**: ${projectDetails.deadline}
-      - **Requirements**: ${projectDetails.requirements}
-
-      **Project Plan Must Include**:
-      1️⃣ Overview  
-      2️⃣ Key Phases (Excavation, Foundation, Roofing, etc.)  
-      3️⃣ Budget Breakdown  
-      4️⃣ Timeline  
-      5️⃣ Resources Required  
-      6️⃣ Risks & Mitigation Strategies  
-
-      **Milestones** (in valid JSON format at the end):
-      {
-        "milestones": [
-          { "name": "Site Preparation", "date": "2025-04-01", "deliverable": "Cleared and leveled site" },
-          { "name": "Foundation Completed", "date": "2025-04-15", "deliverable": "Concrete foundation ready" },
-          { "name": "Structural Framing", "date": "2025-05-10", "deliverable": "Steel framework completed" },
-          { "name": "Roof Installation", "date": "2025-05-25", "deliverable": "Roofing completed" },
-          { "name": "Final Inspection", "date": "2025-06-10", "deliverable": "Ready for handover" }
-        ]
-      }`;
-
+  
+      const prompt = `Generate a **detailed construction project plan** including:
+        - Project Name: ${projectDetails.name}
+        - Project ID: ${projectDetails.id}
+        - Budget: ${projectDetails.budget} INR
+        - Start Date: ${projectDetails.beginningDate}
+        - Deadline: ${projectDetails.deadline}
+        - Requirements: ${projectDetails.requirements}
+        
+        **Project Plan Must Include**:
+        1️⃣ Overview
+        2️⃣ Key Phases (Excavation, Foundation, Roofing, etc.)
+        3️⃣ Budget Breakdown
+        4️⃣ Timeline
+        5️⃣ Resources Required
+        6️⃣ Risks & Mitigation Strategies
+  
+        **Milestones (Valid JSON format at the end)**:
+        {
+          "milestones": [
+            { "name": "Site Preparation", "beginningDate": "2025-04-01", "deadline": "2025-04-05", "budget": 50000, "deliverable": "Cleared and leveled site" },
+            { "name": "Foundation Completed", "beginningDate": "2025-04-06", "deadline": "2025-04-15", "budget": 150000, "deliverable": "Concrete foundation ready" },
+            { "name": "Structural Framing", "beginningDate": "2025-04-16", "deadline": "2025-05-05", "budget": 200000, "deliverable": "Steel framework completed" },
+            { "name": "Roof Installation", "beginningDate": "2025-05-06", "deadline": "2025-05-25", "budget": 100000, "deliverable": "Roofing completed" },
+            { "name": "Final Inspection", "beginningDate": "2025-06-01", "deadline": "2025-06-10", "budget": 50000, "deliverable": "Ready for handover" }
+          ]
+        }`;
+  
       const result = await chatSession.sendMessage(prompt);
-
-      if (!result || !result.response || !result.response.text) {
-        throw new Error("Invalid response from Gemini API.");
-      }
-
+  
+      if (!result?.response?.text) throw new Error("Invalid response from Gemini API.");
+  
       let responseText = result.response.text();
-      console.log("Raw API Response:", responseText);
-
-      // ✅ Remove unwanted markdown formatting
-      responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
-
-      // ✅ Extract milestones using regex
-      const milestoneRegex = /{[\s\S]*}/;
-      const milestoneMatch = responseText.match(milestoneRegex);
-
+      console.log("📌 Raw API Response:", responseText);
+  
+      // ✅ Extract JSON Milestone Section
+      const milestoneRegex = /```json([\s\S]*?)```/;
+      const match = responseText.match(milestoneRegex);
+  
       let parsedMilestones = [];
-      if (milestoneMatch) {
+      if (match) {
         try {
-          const jsonString = milestoneMatch[0];
-          const jsonData = JSON.parse(jsonString);
+          const jsonString = match[1].trim();
+          const validJsonString = jsonString.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
+  
+          console.log("📌 Extracted JSON:", validJsonString);
+  
+          const jsonData = JSON.parse(validJsonString);
           parsedMilestones = jsonData.milestones || [];
         } catch (error) {
-          console.error("JSON Parsing Error:", error);
-          Alert.alert("Error", "Failed to parse milestones.");
+          console.error("❌ JSON Parsing Error:", error);
+          Alert.alert("Error", "Failed to parse milestones. Check JSON formatting.");
         }
+      } else {
+        console.error("❌ No JSON found in response.");
+        Alert.alert("Error", "No milestones found in the response.");
       }
-
-      // ✅ Extract the main project plan without the milestones JSON
+  
+      // ✅ Remove JSON from Plan Text
       const cleanProjectPlan = responseText.replace(milestoneRegex, "").trim();
-
+  
       setProjectPlan(cleanProjectPlan);
       setMilestones(parsedMilestones);
       setPlanGenerated(true);
     } catch (error) {
-      console.error("API Error:", error);
+      console.error("❌ API Error:", error);
       Alert.alert("Error", "Failed to connect to Gemini API.");
     } finally {
       setLoading(false);
     }
   };
+  
+  
 
-  // Accept plan and save project details in the database
+  // ✅ Accept Plan & Save to Backend
+  // ✅ Accept Plan & Save to Backend
   const handleAcceptPlan = async () => {
     if (!projectPlan) {
       Alert.alert("Error", "No plan to accept.");
       return;
     }
-
+  
     setLoading(true);
-
+  
     try {
-      await axios.post("http://localhost:5000/api/save-project-details", {
+      // ✅ Extract Project Data
+      const projectData = {
         project_id: projectDetails.id,
         name: projectDetails.name,
         budget: projectDetails.budget,
         beginningDate: projectDetails.beginningDate,
         deadline: projectDetails.deadline,
-        milestones: milestones, // ✅ Save milestones along with the project
-      });
-
-      Alert.alert("Success", "Project details saved successfully!");
+      };
+  
+      console.log("📌 Saving Project Data:", projectData);
+  
+      // ✅ Save Project to Backend
+      await axios.post("http://localhost:5000/api/save-project-details", projectData);
+  
+      // ✅ Parse Milestone Data from Console
+      console.log("📌 Raw Milestones from Console:", milestones); // Debugging
+  
+      const parsedMilestones = milestones.map((milestone) => ({
+        project_id: projectDetails.id, // Ensure project ID is linked
+        milestone_name: milestone.name, // Backend requires 'milestone_name'
+        description: milestone.deliverable || "No description", // Ensure description exists
+        budget: milestone.budget || 0, // Default to 0 if missing
+        beginningDate: milestone.beginningDate, // Use 'beginningDate'
+        deadline: milestone.deadline, // Use 'deadline'
+        status: "In Progress", // Default status
+      }));
+  
+      console.log("📌 Parsed Milestones Data:", parsedMilestones); // Debugging
+  
+      // ✅ Save Milestones to Backend
+      if (parsedMilestones.length > 0) {
+        await Promise.all(
+          parsedMilestones.map((milestone) =>
+            axios.post("http://localhost:5000/api/save-milestone", milestone)
+          )
+        );
+      }
+  
+      Alert.alert("Success", "Project and milestones saved successfully!");
     } catch (error) {
-      console.error("Error saving project:", error);
+      console.error("❌ Error saving project:", error.response?.data || error.message);
       Alert.alert("Error", "Failed to save project details.");
     } finally {
       setLoading(false);
     }
   };
+  
 
-  // Reject plan and reset the state
+  // ✅ Reject Plan
   const handleRejectPlan = () => {
     setProjectPlan("");
     setMilestones([]);
@@ -183,11 +225,12 @@ export default function ClientDashboard() {
           <Text style={styles.subHeader}>Generated Project Plan</Text>
           <Text style={styles.text}>{projectPlan}</Text>
 
-          <Text style={styles.subHeader}>Milestones</Text>
+          <Text style={styles.subHeader}>🚀 Project Milestones</Text>
           {milestones.map((milestone, index) => (
             <View key={index} style={styles.milestoneItem}>
-              <Text style={styles.text}>🔹 {milestone.name} - {milestone.date}</Text>
-              <Text style={styles.text}>📌 {milestone.deliverable}</Text>
+              <Text style={styles.milestoneTitle}>🔹 {milestone.name}</Text>
+              <Text style={styles.milestoneDate}>📅 Start: {milestone.beginningDate} | End: {milestone.deadline}</Text>
+              <Text style={styles.milestoneDeliverable}>✅ {milestone.deliverable}</Text>
             </View>
           ))}
 
