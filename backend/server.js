@@ -29,6 +29,32 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
+
+
+
+
+const authenticateUser = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized: No token provided" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, "your_secret_key"); // Replace with your actual secret key
+    req.user = decoded; // Attach decoded user details to request object
+    next();
+  } catch (error) {
+    return res.status(403).json({ error: "Forbidden: Invalid token" });
+  }
+};
+
+module.exports = authenticateUser;
+
+
+
+
+
 // **✅ Test Database Connection**
 pool.connect((err) => {
   if (err) console.error("❌ Database connection error:", err.stack);
@@ -417,34 +443,90 @@ app.get("/api/accepted-tasks", async (req, res) => {
   }
 });
 
-// // **🟢 Save Project Details API**
-app.post("/api/save-project-details", async (req, res) => {
-  const { project_id, name, budget, beginningDate, deadline } = req.body;
+// **🟢 Save Project Details API**
+// app.post("/api/save-project-details", async (req, res) => {
+//   const { project_id, name, budget, beginningDate, deadline } = req.body;
 
-  if (!project_id || !name || !budget || !beginningDate || !deadline) {
+//   if (!project_id || !name || !budget || !beginningDate || !deadline) {
+//     return res.status(400).json({ error: "All fields are required" });
+//   }
+
+//   try {
+//     // Check if project_id already exists
+//     const projectExists = await pool.query("SELECT id FROM projects WHERE project_id = $1", [project_id]);
+
+//     if (projectExists.rows.length > 0) {
+//       return res.status(400).json({ error: "Project with this ID already exists" });
+//     }
+
+//     // Insert project details into the database
+//     const result = await pool.query(
+//       "INSERT INTO projects (project_id, name, budget, beginningDate, deadline) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+//       [project_id, name, budget, beginningDate, deadline]
+//     );
+
+//     res.status(201).json({ message: "Project details saved successfully", project: result.rows[0] });
+//   } catch (error) {
+//     console.error("Error saving project details:", error);
+//     res.status(500).json({ error: "Server error" });
+//   }
+// });
+
+
+
+app.post("/api/save-project-details", async (req, res) => {
+  console.log("🔍 Incoming request body:", req.body);
+
+  // ✅ Properly extract email if it's in a JSON object
+  const parsedEmail = typeof req.body.email === "string" ? req.body.email : req.body.email?.email;
+  console.log("📧 Parsed Email:", parsedEmail);
+
+  const { project_id, name, budget, beginningDate, deadline } = req.body;
+  const email = parsedEmail; // Assign extracted email
+
+  if (!project_id || !name || !budget || !beginningDate || !deadline || !email) {
     return res.status(400).json({ error: "All fields are required" });
   }
 
   try {
-    // Check if project_id already exists
-    const projectExists = await pool.query("SELECT id FROM projects WHERE project_id = $1", [project_id]);
+    await pool.query("BEGIN");
 
+    const projectExists = await pool.query("SELECT id FROM projects WHERE project_id = $1", [project_id]);
     if (projectExists.rows.length > 0) {
+      await pool.query("ROLLBACK");
       return res.status(400).json({ error: "Project with this ID already exists" });
     }
 
-    // Insert project details into the database
-    const result = await pool.query(
+    const projectResult = await pool.query(
       "INSERT INTO projects (project_id, name, budget, beginningDate, deadline) VALUES ($1, $2, $3, $4, $5) RETURNING *",
       [project_id, name, budget, beginningDate, deadline]
     );
 
-    res.status(201).json({ message: "Project details saved successfully", project: result.rows[0] });
+    const userUpdateResult = await pool.query(
+      "UPDATE users SET project_id = $1 WHERE email = $2 RETURNING email",
+      [project_id, email]
+    );
+
+    if (userUpdateResult.rowCount === 0) {
+      await pool.query("ROLLBACK");
+      return res.status(404).json({ error: "User with this email not found" });
+    }
+
+    await pool.query("COMMIT");
+    res.status(201).json({ message: "Project details saved successfully", project: projectResult.rows[0] });
+
   } catch (error) {
-    console.error("Error saving project details:", error);
+    await pool.query("ROLLBACK");
+    console.error("❌ Error saving project details:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
+
+
+
+
+
+
 
 
 // ✅ Save milestones route
@@ -475,6 +557,112 @@ app.post("/api/save-milestone", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+
+
+
+//site engineer
+app.get("/api/site-engineer/project/:projectId", async (req, res) => {
+  const { projectId } = req.params;
+  console.log("✅ Received projectId:", projectId);
+
+  try {
+    const query = `
+      SELECT 
+        project_id,
+        project_name,
+        project_budget,
+        project_start_date,
+        project_deadline,
+        milestone_name,
+        milestone_description,
+        milestone_budget,
+        milestone_start_date,
+        milestone_deadline,
+        milestone_status
+      FROM project_milestones_view
+      WHERE project_id = $1
+      ORDER BY milestone_start_date;
+    `;
+
+    console.log("🔍 Executing query:", query);
+    const result = await pool.query(query, [projectId]);
+
+    console.log("📊 Query result:", result.rows);
+
+    if (result.rows.length === 0) {
+      console.log("⚠️ No project found in database.");
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    // Extract project details from the first row
+    const project = {
+      project_id: result.rows[0].project_id,
+      name: result.rows[0].project_name,
+      budget: result.rows[0].project_budget,
+      start_date: result.rows[0].project_start_date,
+      deadline: result.rows[0].project_deadline,
+    };
+
+    // Extract all milestones
+    const milestones = result.rows
+      .filter(row => row.milestone_name !== null) // Ignore null milestones
+      .map(row => ({
+        milestone_name: row.milestone_name,
+        description: row.milestone_description,
+        start_date: row.milestone_start_date,
+        deadline: row.milestone_deadline,
+        status: row.milestone_status,
+        budget: row.milestone_budget
+      }));
+
+    res.json({ project, milestones });
+
+  } catch (error) {
+    console.error("❌ Error fetching project details:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
+
+
+//site eng proid assigning
+app.post("/api/projects", async (req, res) => {
+  const { project_id, email } = req.body; // Use email instead of site_engineer_id
+
+  if (!project_id || !email) {
+    return res.status(400).json({ error: "Project ID and Email are required." });
+  }
+
+  try {
+    // Step 1: Insert Project if it doesn't exist
+    await pool.query("INSERT INTO projects (project_id) VALUES ($1) ON CONFLICT DO NOTHING", [project_id]);
+
+    // Step 2: Update the User's Project ID using their Email
+    const result = await pool.query(
+      "UPDATE users SET project_id = $1 WHERE email = $2 RETURNING *",
+      [project_id, email]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    res.status(201).json({ message: "Project assigned successfully to user!" });
+  } catch (error) {
+    console.error("Error assigning project:", error);
+    res.status(500).json({ error: "Failed to assign project." });
+  }
+});
+
+
+
+
+
+
+
+
 
 
 

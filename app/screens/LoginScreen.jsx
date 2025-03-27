@@ -17,6 +17,7 @@ export default function LoginScreen() {
 
   // 🛠️ Handle Login Request
   const handleLogin = async () => {
+    await AsyncStorage.setItem("userEmail", email);
     if (!email.trim() || !password.trim()) {
       setErrorMessage("All fields are required.");
       return;
@@ -38,7 +39,8 @@ export default function LoginScreen() {
       await AsyncStorage.setItem("authToken", token);
       await AsyncStorage.setItem("userId", user.id);  // ✅ Store user ID
       await AsyncStorage.setItem("userRole", user.role);
-  
+      await AsyncStorage.setItem("userEmail", email); 
+
       if (user.role === "Worker") {
         navigation.navigate("WorkerDashboard");
       } else if (user.role === "Client") {

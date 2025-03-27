@@ -1,17 +1,30 @@
 import axios from "axios";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useNavigation } from "@react-navigation/native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import styles from "../styles/ClientDashboard.styles";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Initialize Google AI Model
+// ✅ Initialize Google AI Model
 const apiKey = "AIzaSyB3EzlaDTWttmIag3G-VemU8pKqFFp4vEI";
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
+const saveEmail = async (userEmail) => {
+  try {
+    const emailJson = JSON.stringify({ email: userEmail }); // Convert email to JSON
+    await AsyncStorage.setItem("userEmail", emailJson);
+    console.log("✅ Email saved:", emailJson);
+  } catch (error) {
+    console.error("❌ Error saving email:", error);
+  }
+};
+
+
 export default function ClientDashboard() {
   const navigation = useNavigation();
+  const [email, setEmail] = useState("");
   const [projectDetails, setProjectDetails] = useState({
     name: "",
     id: "",
@@ -26,6 +39,17 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(false);
   const [planGenerated, setPlanGenerated] = useState(false);
 
+  // ✅ Fetch email from AsyncStorage
+  useEffect(() => {
+    const fetchEmail = async () => {
+      const storedEmail = await AsyncStorage.getItem("userEmail");
+      if (storedEmail) {
+        setEmail(storedEmail);
+      }
+    };
+    fetchEmail();
+  }, []);
+
   // ✅ Generate Project Plan with Milestones
   const generateProjectPlan = async () => {
     if (
@@ -38,12 +62,12 @@ export default function ClientDashboard() {
       Alert.alert("Error", "All fields are required.");
       return;
     }
-  
+
     setLoading(true);
     setProjectPlan("");
     setMilestones([]);
     setPlanGenerated(false);
-  
+
     try {
       const chatSession = model.startChat({
         generationConfig: {
@@ -55,7 +79,7 @@ export default function ClientDashboard() {
         },
         history: [],
       });
-  
+
       const prompt = `Generate a **detailed construction project plan** including:
         - Project Name: ${projectDetails.name}
         - Project ID: ${projectDetails.id}
@@ -63,7 +87,7 @@ export default function ClientDashboard() {
         - Start Date: ${projectDetails.beginningDate}
         - Deadline: ${projectDetails.deadline}
         - Requirements: ${projectDetails.requirements}
-        
+
         **Project Plan Must Include**:
         1️⃣ Overview
         2️⃣ Key Phases (Excavation, Foundation, Roofing, etc.)
@@ -71,52 +95,44 @@ export default function ClientDashboard() {
         4️⃣ Timeline
         5️⃣ Resources Required
         6️⃣ Risks & Mitigation Strategies
-  
+
         **Milestones (Valid JSON format at the end)**:
         {
           "milestones": [
             { "name": "Site Preparation", "beginningDate": "2025-04-01", "deadline": "2025-04-05", "budget": 50000, "deliverable": "Cleared and leveled site" },
             { "name": "Foundation Completed", "beginningDate": "2025-04-06", "deadline": "2025-04-15", "budget": 150000, "deliverable": "Concrete foundation ready" },
-            { "name": "Structural Framing", "beginningDate": "2025-04-16", "deadline": "2025-05-05", "budget": 200000, "deliverable": "Steel framework completed" },
-            { "name": "Roof Installation", "beginningDate": "2025-05-06", "deadline": "2025-05-25", "budget": 100000, "deliverable": "Roofing completed" },
-            { "name": "Final Inspection", "beginningDate": "2025-06-01", "deadline": "2025-06-10", "budget": 50000, "deliverable": "Ready for handover" }
+            { "name": "Structural Framing", "beginningDate": "2025-04-16", "deadline": "2025-05-05", "budget": 200000, "deliverable": "Steel framework completed" }
           ]
         }`;
-  
+
       const result = await chatSession.sendMessage(prompt);
-  
+
       if (!result?.response?.text) throw new Error("Invalid response from Gemini API.");
-  
+
       let responseText = result.response.text();
       console.log("📌 Raw API Response:", responseText);
-  
+
       // ✅ Extract JSON Milestone Section
       const milestoneRegex = /```json([\s\S]*?)```/;
       const match = responseText.match(milestoneRegex);
-  
+
       let parsedMilestones = [];
       if (match) {
         try {
           const jsonString = match[1].trim();
           const validJsonString = jsonString.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
-  
+
           console.log("📌 Extracted JSON:", validJsonString);
-  
+
           const jsonData = JSON.parse(validJsonString);
           parsedMilestones = jsonData.milestones || [];
         } catch (error) {
           console.error("❌ JSON Parsing Error:", error);
-          Alert.alert("Error", "Failed to parse milestones. Check JSON formatting.");
+          Alert.alert("Error", "Failed to parse milestones.");
         }
-      } else {
-        console.error("❌ No JSON found in response.");
-        Alert.alert("Error", "No milestones found in the response.");
       }
-  
-      // ✅ Remove JSON from Plan Text
-      const cleanProjectPlan = responseText.replace(milestoneRegex, "").trim();
-  
-      setProjectPlan(cleanProjectPlan);
+
+      setProjectPlan(responseText.replace(milestoneRegex, "").trim());
       setMilestones(parsedMilestones);
       setPlanGenerated(true);
     } catch (error) {
@@ -126,58 +142,44 @@ export default function ClientDashboard() {
       setLoading(false);
     }
   };
-  
-  
-
-  // ✅ Accept Plan & Save to Backend
+  console.log(email)
   // ✅ Accept Plan & Save to Backend
   const handleAcceptPlan = async () => {
     if (!projectPlan) {
       Alert.alert("Error", "No plan to accept.");
       return;
     }
-  
+
     setLoading(true);
-  
+
     try {
-      // ✅ Extract Project Data
       const projectData = {
         project_id: projectDetails.id,
         name: projectDetails.name,
         budget: projectDetails.budget,
         beginningDate: projectDetails.beginningDate,
         deadline: projectDetails.deadline,
+        email: email.replace(/"/g, ""),
       };
-  
-      console.log("📌 Saving Project Data:", projectData);
-  
-      // ✅ Save Project to Backend
+
       await axios.post("http://localhost:5000/api/save-project-details", projectData);
-  
-      // ✅ Parse Milestone Data from Console
-      console.log("📌 Raw Milestones from Console:", milestones); // Debugging
-  
-      const parsedMilestones = milestones.map((milestone) => ({
-        project_id: projectDetails.id, // Ensure project ID is linked
-        milestone_name: milestone.name, // Backend requires 'milestone_name'
-        description: milestone.deliverable || "No description", // Ensure description exists
-        budget: milestone.budget || 0, // Default to 0 if missing
-        beginningDate: milestone.beginningDate, // Use 'beginningDate'
-        deadline: milestone.deadline, // Use 'deadline'
-        status: "In Progress", // Default status
-      }));
-  
-      console.log("📌 Parsed Milestones Data:", parsedMilestones); // Debugging
-  
-      // ✅ Save Milestones to Backend
-      if (parsedMilestones.length > 0) {
+
+      if (milestones.length > 0) {
         await Promise.all(
-          parsedMilestones.map((milestone) =>
-            axios.post("http://localhost:5000/api/save-milestone", milestone)
+          milestones.map((milestone) =>
+            axios.post("http://localhost:5000/api/save-milestone", {
+              project_id: projectDetails.id,
+              milestone_name: milestone.name,
+              description: milestone.deliverable || "No description",
+              budget: milestone.budget || 0,
+              beginningDate: milestone.beginningDate,
+              deadline: milestone.deadline,
+              status: "In Progress",
+            })
           )
         );
       }
-  
+
       Alert.alert("Success", "Project and milestones saved successfully!");
     } catch (error) {
       console.error("❌ Error saving project:", error.response?.data || error.message);
@@ -186,7 +188,6 @@ export default function ClientDashboard() {
       setLoading(false);
     }
   };
-  
 
   // ✅ Reject Plan
   const handleRejectPlan = () => {
@@ -198,6 +199,11 @@ export default function ClientDashboard() {
 
   return (
     <ScrollView style={styles.container}>
+      {/* ✅ Welcome Message */}
+      <View style={styles.welcomeContainer}>
+        <Text style={styles.welcomeText}>Welcome, {email}!</Text>
+      </View>
+
       <Text style={styles.header}>Client Dashboard</Text>
 
       <View style={styles.section}>
@@ -227,14 +233,12 @@ export default function ClientDashboard() {
 
           <Text style={styles.subHeader}>🚀 Project Milestones</Text>
           {milestones.map((milestone, index) => (
-            <View key={index} style={styles.milestoneItem}>
-              <Text style={styles.milestoneTitle}>🔹 {milestone.name}</Text>
-              <Text style={styles.milestoneDate}>📅 Start: {milestone.beginningDate} | End: {milestone.deadline}</Text>
-              <Text style={styles.milestoneDeliverable}>✅ {milestone.deliverable}</Text>
-            </View>
+            <Text key={index} style={styles.milestoneItem}>
+              🔹 {milestone.name} - {milestone.beginningDate} to {milestone.deadline}
+            </Text>
           ))}
 
-          <TouchableOpacity style={[styles.button, { backgroundColor: "green" }]} onPress={handleAcceptPlan}>
+          <TouchableOpacity style={styles.button} onPress={handleAcceptPlan}>
             <Text style={styles.buttonText}>Accept Plan</Text>
           </TouchableOpacity>
 
@@ -246,3 +250,4 @@ export default function ClientDashboard() {
     </ScrollView>
   );
 }
+
