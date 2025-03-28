@@ -4,54 +4,60 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: "#fff",
+    backgroundColor: "#f8f9fa",
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    textAlign: "center",
     marginBottom: 20,
-  },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginVertical: 10,
-  },
-  noProjectsText: {
-    fontSize: 16,
-    color: "#999",
     textAlign: "center",
-    marginVertical: 10,
   },
-  projectItem: {
-    padding: 10,
-    backgroundColor: "#f0f0f0",
-    marginVertical: 5,
+  picker: {
+    height: 50,
+    borderColor: "#ccc",
+    borderWidth: 1,
     borderRadius: 5,
+    marginBottom: 20,
+    backgroundColor: "#fff",
   },
-  projectText: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  detailsContainer: {
-    marginTop: 20,
+  listItem: {
     padding: 15,
-    backgroundColor: "#e0e0e0",
-    borderRadius: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
   },
-  detailsTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 5,
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
-  milestoneItem: {
-    backgroundColor: "#d9edf7",
+  modalContent: {
+    width: "80%",
+    padding: 20,
+    backgroundColor: "white",
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  input: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#ccc",
     padding: 10,
-    marginTop: 10,
+    marginBottom: 10,
     borderRadius: 5,
+    backgroundColor: "#fff",
   },
-  milestoneTitle: {
+  button: {
+    backgroundColor: "#007bff",
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center",
+  },
+  buttonText: {
+    color: "white",
     fontSize: 16,
     fontWeight: "bold",
   },
 });
+
+export default styles;

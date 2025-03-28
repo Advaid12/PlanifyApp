@@ -559,110 +559,47 @@ app.post("/api/save-milestone", async (req, res) => {
 });
 
 
+a// Get all projects
+app.get("/api/projects", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT project_id FROM projects");
+    res.json({ projects: result.rows });
+  } catch (error) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
 
-
-//site engineer
+// Get milestones for a project
 app.get("/api/site-engineer/project/:projectId", async (req, res) => {
   const { projectId } = req.params;
-  console.log("✅ Received projectId:", projectId);
-
   try {
-    const query = `
-      SELECT 
-        project_id,
-        project_name,
-        project_budget,
-        project_start_date,
-        project_deadline,
-        milestone_name,
-        milestone_description,
-        milestone_budget,
-        milestone_start_date,
-        milestone_deadline,
-        milestone_status
-      FROM project_milestones_view
-      WHERE project_id = $1
-      ORDER BY milestone_start_date;
-    `;
-
-    console.log("🔍 Executing query:", query);
-    const result = await pool.query(query, [projectId]);
-
-    console.log("📊 Query result:", result.rows);
-
-    if (result.rows.length === 0) {
-      console.log("⚠️ No project found in database.");
-      return res.status(404).json({ message: "Project not found" });
-    }
-
-    // Extract project details from the first row
-    const project = {
-      project_id: result.rows[0].project_id,
-      name: result.rows[0].project_name,
-      budget: result.rows[0].project_budget,
-      start_date: result.rows[0].project_start_date,
-      deadline: result.rows[0].project_deadline,
-    };
-
-    // Extract all milestones
-    const milestones = result.rows
-      .filter(row => row.milestone_name !== null) // Ignore null milestones
-      .map(row => ({
-        milestone_name: row.milestone_name,
-        description: row.milestone_description,
-        start_date: row.milestone_start_date,
-        deadline: row.milestone_deadline,
-        status: row.milestone_status,
-        budget: row.milestone_budget
-      }));
-
-    res.json({ project, milestones });
-
-  } catch (error) {
-    console.error("❌ Error fetching project details:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
-
-
-
-//site eng proid assigning
-app.post("/api/projects", async (req, res) => {
-  const { project_id, email } = req.body; // Use email instead of site_engineer_id
-
-  if (!project_id || !email) {
-    return res.status(400).json({ error: "Project ID and Email are required." });
-  }
-
-  try {
-    // Step 1: Insert Project if it doesn't exist
-    await pool.query("INSERT INTO projects (project_id) VALUES ($1) ON CONFLICT DO NOTHING", [project_id]);
-
-    // Step 2: Update the User's Project ID using their Email
     const result = await pool.query(
-      "UPDATE users SET project_id = $1 WHERE email = $2 RETURNING *",
-      [project_id, email]
+      "SELECT milestone_name, status FROM milestones WHERE project_id = $1",
+      [projectId]
     );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "User not found." });
-    }
-
-    res.status(201).json({ message: "Project assigned successfully to user!" });
+    res.json({ milestones: result.rows });
   } catch (error) {
-    console.error("Error assigning project:", error);
-    res.status(500).json({ error: "Failed to assign project." });
+    res.status(500).json({ error: "Database error" });
   }
 });
 
+// Update milestone status
+app.put("/api/site-engineer/milestone", async (req, res) => {
+  const { project_id, milestone_name, status } = req.body;
+  if (!project_id || !milestone_name || !status) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
 
-
-
-
-
-
-
+  try {
+    await pool.query(
+      "UPDATE milestones SET status = $1 WHERE project_id = $2 AND milestone_name = $3",
+      [status, project_id, milestone_name]
+    );
+    res.json({ message: "Milestone updated successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
 
 
 

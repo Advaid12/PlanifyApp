@@ -1,17 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, FlatList, Alert, StyleSheet, TextInput, Modal, Picker } from "react-native";
+import { View, Text, TouchableOpacity, FlatList, Alert, TextInput, Modal } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Picker } from "@react-native-picker/picker";
 import styles from "../styles/SiteEngineer.styles";
-
-const saveEmail = async (userEmail) => {
-  try {
-    const emailJson = JSON.stringify({ email: userEmail });
-    await AsyncStorage.setItem("userEmail", emailJson);
-    console.log("✅ Email saved:", emailJson);
-  } catch (error) {
-    console.error("❌ Error saving email:", error);
-  }
-};
 
 export default function SiteEngineer() {
   const [projectList, setProjectList] = useState([]);
@@ -58,33 +49,6 @@ export default function SiteEngineer() {
     }
   };
 
-  const assignProject = async () => {
-    if (!selectedProject || !userEmail) {
-      Alert.alert("Error", "Please select a project and ensure email is available.");
-      return;
-    }
-    try {
-      const response = await fetch("http://localhost:5000/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: selectedProject, email: userEmail }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        Alert.alert("Success", data.message);
-      } else {
-        Alert.alert("Error", data.error);
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to assign project.");
-    }
-  };
-
-  const showUpdateModal = (milestone) => {
-    setCurrentMilestone(milestone);
-    setModalVisible(true);
-  };
-
   const handleUpdate = async () => {
     try {
       const response = await fetch("http://localhost:5000/api/site-engineer/milestone", {
@@ -117,22 +81,23 @@ export default function SiteEngineer() {
           <Picker.Item key={project} label={project} value={project} />
         ))}
       </Picker>
-      <TouchableOpacity onPress={assignProject}>
-        <Text>Assign Project</Text>
-      </TouchableOpacity>
       <FlatList
         data={milestones}
         keyExtractor={(item) => item.milestone_name}
         renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => showUpdateModal(item)}>
+          <TouchableOpacity onPress={() => {
+            setCurrentMilestone(item);
+            setModalVisible(true);
+          }}>
             <Text>{item.milestone_name} - {item.status}</Text>
           </TouchableOpacity>
         )}
       />
       <Modal visible={isModalVisible}>
         <TextInput 
-          value={currentMilestone?.description} 
-          onChangeText={(text) => setCurrentMilestone({ ...currentMilestone, description: text })} 
+          value={currentMilestone?.status} 
+          onChangeText={(text) => setCurrentMilestone({ ...currentMilestone, status: text })} 
+          placeholder="Update Status (Completed, In Progress, Started)"
         />
         <TouchableOpacity onPress={handleUpdate}>
           <Text>Update Milestone</Text>
