@@ -472,17 +472,14 @@ app.get("/api/accepted-tasks", async (req, res) => {
 //   }
 // });
 
-
-
 app.post("/api/save-project-details", async (req, res) => {
   console.log("🔍 Incoming request body:", req.body);
 
-  // ✅ Properly extract email if it's in a JSON object
   const parsedEmail = typeof req.body.email === "string" ? req.body.email : req.body.email?.email;
   console.log("📧 Parsed Email:", parsedEmail);
 
   const { project_id, name, budget, beginningDate, deadline } = req.body;
-  const email = parsedEmail; // Assign extracted email
+  const email = parsedEmail;
 
   if (!project_id || !name || !budget || !beginningDate || !deadline || !email) {
     return res.status(400).json({ error: "All fields are required" });
@@ -491,26 +488,18 @@ app.post("/api/save-project-details", async (req, res) => {
   try {
     await pool.query("BEGIN");
 
-    const projectExists = await pool.query("SELECT id FROM projects WHERE project_id = $1", [project_id]);
+    // ✅ Step 1: Check if project already exists
+    const projectExists = await pool.query("SELECT project_id FROM projects WHERE project_id = $1", [project_id]);
     if (projectExists.rows.length > 0) {
       await pool.query("ROLLBACK");
       return res.status(400).json({ error: "Project with this ID already exists" });
     }
 
+    // ✅ Step 2: Insert project (removed id column)
     const projectResult = await pool.query(
-      "INSERT INTO projects (project_id, name, budget, beginningDate, deadline) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [project_id, name, budget, beginningDate, deadline]
+      "INSERT INTO projects (project_id, name, budget, beginningDate, deadline, email) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+      [project_id, name, budget, beginningDate, deadline, email]
     );
-
-    const userUpdateResult = await pool.query(
-      "UPDATE users SET project_id = $1 WHERE email = $2 RETURNING email",
-      [project_id, email]
-    );
-
-    if (userUpdateResult.rowCount === 0) {
-      await pool.query("ROLLBACK");
-      return res.status(404).json({ error: "User with this email not found" });
-    }
 
     await pool.query("COMMIT");
     res.status(201).json({ message: "Project details saved successfully", project: projectResult.rows[0] });
@@ -524,12 +513,57 @@ app.post("/api/save-project-details", async (req, res) => {
 
 
 
+// app.post("/api/save-project-details", async (req, res) => {
+//   console.log("🔍 Incoming request body:", req.body);
+
+//   // ✅ Properly extract email if it's in a JSON object
+//   const parsedEmail = typeof req.body.email === "string" ? req.body.email : req.body.email?.email;
+//   console.log("📧 Parsed Email:", parsedEmail);
+
+//   const { project_id, name, budget, beginningDate, deadline } = req.body;
+//   const email = parsedEmail; // Assign extracted email
+
+//   if (!project_id || !name || !budget || !beginningDate || !deadline || !email) {
+//     return res.status(400).json({ error: "All fields are required" });
+//   }
+
+//   try {
+//     await pool.query("BEGIN");
+
+//     const projectExists = await pool.query("SELECT id FROM projects WHERE project_id = $1", [project_id]);
+//     if (projectExists.rows.length > 0) {
+//       await pool.query("ROLLBACK");
+//       return res.status(400).json({ error: "Project with this ID already exists" });
+//     }
+
+//     const projectResult = await pool.query(
+//       "INSERT INTO projects (project_id, name, budget, beginningDate, deadline) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+//       [project_id, name, budget, beginningDate, deadline]
+//     );
+
+//     const userUpdateResult = await pool.query(
+//       "UPDATE users SET project_id = $1 WHERE email = $2 RETURNING email",
+//       [project_id, email]
+//     );
+
+//     if (userUpdateResult.rowCount === 0) {
+//       await pool.query("ROLLBACK");
+//       return res.status(404).json({ error: "User with this email not found" });
+//     }
+
+//     await pool.query("COMMIT");
+//     res.status(201).json({ message: "Project details saved successfully", project: projectResult.rows[0] });
+
+//   } catch (error) {
+//     await pool.query("ROLLBACK");
+//     console.error("❌ Error saving project details:", error);
+//     res.status(500).json({ error: "Server error" });
+//   }
+// });
 
 
 
 
-
-// ✅ Save milestones route
 app.post("/api/save-milestone", async (req, res) => {
   const { project_id, milestone_name, description, budget, beginningDate, deadline, status } = req.body;
 
@@ -538,28 +572,66 @@ app.post("/api/save-milestone", async (req, res) => {
   }
 
   try {
-    // Check if the project exists before inserting the milestone
-    const projectExists = await pool.query("SELECT id FROM projects WHERE project_id = $1", [project_id]);
+    await pool.query("BEGIN");
 
-    if (projectExists.rows.length === 0) {
+    // ✅ Step 1: Check if project exists
+    const projectResult = await pool.query("SELECT project_id FROM projects WHERE project_id = $1", [project_id]);
+
+    if (projectResult.rows.length === 0) {
+      await pool.query("ROLLBACK");
       return res.status(400).json({ error: "Project ID does not exist" });
     }
 
-    // Insert milestone details into the database
+    // ✅ Step 2: Insert milestone (without id, since milestone_id is auto-generated)
     const result = await pool.query(
       "INSERT INTO milestones (project_id, milestone_name, description, budget, beginningdate, deadline, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
       [project_id, milestone_name, description, budget, beginningDate, deadline, status]
     );
 
+    await pool.query("COMMIT");
     res.status(201).json({ message: "Milestone saved successfully", milestone: result.rows[0] });
+
   } catch (error) {
-    console.error("Error saving milestone:", error);
+    await pool.query("ROLLBACK");
+    console.error("❌ Error saving milestone:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
 
 
-a// Get all projects
+
+
+// ✅ Save milestones route
+// app.post("/api/save-milestone", async (req, res) => {
+//   const { project_id, milestone_name, description, budget, beginningDate, deadline, status } = req.body;
+
+//   if (!project_id || !milestone_name || !budget || !beginningDate || !deadline || !status) {
+//     return res.status(400).json({ error: "All fields are required" });
+//   }
+
+//   try {
+//     // Check if the project exists before inserting the milestone
+//     const projectExists = await pool.query("SELECT id FROM projects WHERE project_id = $1", [project_id]);
+
+//     if (projectExists.rows.length === 0) {
+//       return res.status(400).json({ error: "Project ID does not exist" });
+//     }
+
+//     // Insert milestone details into the database
+//     const result = await pool.query(
+//       "INSERT INTO milestones (project_id, milestone_name, description, budget, beginningdate, deadline, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+//       [project_id, milestone_name, description, budget, beginningDate, deadline, status]
+//     );
+
+//     res.status(201).json({ message: "Milestone saved successfully", milestone: result.rows[0] });
+//   } catch (error) {
+//     console.error("Error saving milestone:", error);
+//     res.status(500).json({ error: "Server error" });
+//   }
+// });
+
+
+// Get all projects
 app.get("/api/projects", async (req, res) => {
   try {
     const result = await pool.query("SELECT project_id FROM projects");

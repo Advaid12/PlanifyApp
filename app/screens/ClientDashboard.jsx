@@ -7,7 +7,7 @@ import styles from "../styles/ClientDashboard.styles";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // ✅ Initialize Google AI Model
-const apiKey = "AIzaSyB3EzlaDTWttmIag3G-VemU8pKqFFp4vEI";
+const apiKey = "AIzaSyC-OnBnrVq0nEF0uuGHwf-NTqWdjbW1Sk4";
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
