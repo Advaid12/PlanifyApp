@@ -513,54 +513,6 @@ app.post("/api/save-project-details", async (req, res) => {
 
 
 
-// app.post("/api/save-project-details", async (req, res) => {
-//   console.log("🔍 Incoming request body:", req.body);
-
-//   // ✅ Properly extract email if it's in a JSON object
-//   const parsedEmail = typeof req.body.email === "string" ? req.body.email : req.body.email?.email;
-//   console.log("📧 Parsed Email:", parsedEmail);
-
-//   const { project_id, name, budget, beginningDate, deadline } = req.body;
-//   const email = parsedEmail; // Assign extracted email
-
-//   if (!project_id || !name || !budget || !beginningDate || !deadline || !email) {
-//     return res.status(400).json({ error: "All fields are required" });
-//   }
-
-//   try {
-//     await pool.query("BEGIN");
-
-//     const projectExists = await pool.query("SELECT id FROM projects WHERE project_id = $1", [project_id]);
-//     if (projectExists.rows.length > 0) {
-//       await pool.query("ROLLBACK");
-//       return res.status(400).json({ error: "Project with this ID already exists" });
-//     }
-
-//     const projectResult = await pool.query(
-//       "INSERT INTO projects (project_id, name, budget, beginningDate, deadline) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-//       [project_id, name, budget, beginningDate, deadline]
-//     );
-
-//     const userUpdateResult = await pool.query(
-//       "UPDATE users SET project_id = $1 WHERE email = $2 RETURNING email",
-//       [project_id, email]
-//     );
-
-//     if (userUpdateResult.rowCount === 0) {
-//       await pool.query("ROLLBACK");
-//       return res.status(404).json({ error: "User with this email not found" });
-//     }
-
-//     await pool.query("COMMIT");
-//     res.status(201).json({ message: "Project details saved successfully", project: projectResult.rows[0] });
-
-//   } catch (error) {
-//     await pool.query("ROLLBACK");
-//     console.error("❌ Error saving project details:", error);
-//     res.status(500).json({ error: "Server error" });
-//   }
-// });
-
 
 
 
@@ -601,77 +553,156 @@ app.post("/api/save-milestone", async (req, res) => {
 
 
 
-// ✅ Save milestones route
-// app.post("/api/save-milestone", async (req, res) => {
-//   const { project_id, milestone_name, description, budget, beginningDate, deadline, status } = req.body;
 
-//   if (!project_id || !milestone_name || !budget || !beginningDate || !deadline || !status) {
-//     return res.status(400).json({ error: "All fields are required" });
+
+// // Get all projects
+// app.get("/api/projects", async (req, res) => {
+//   try {
+//     const result = await pool.query("SELECT project_id FROM projects");
+//     res.json({ projects: result.rows });
+//   } catch (error) {
+//     res.status(500).json({ error: "Database error" });
+//   }
+// });
+
+// Get milestones for a project
+// app.get("/api/site-engineer/project/:projectId", async (req, res) => {
+//   const { projectId } = req.params;
+//   try {
+//     const result = await pool.query(
+//       "SELECT milestone_name, status FROM milestones WHERE project_id = $1",
+//       [projectId]
+//     );
+//     res.json({ milestones: result.rows });
+//   } catch (error) {
+//     res.status(500).json({ error: "Database error" });
+//   }
+// });
+
+// // Update milestone status
+// app.put("/api/site-engineer/milestone", async (req, res) => {
+//   const { project_id, milestone_name, status } = req.body;
+//   if (!project_id || !milestone_name || !status) {
+//     return res.status(400).json({ error: "Missing required fields" });
 //   }
 
 //   try {
-//     // Check if the project exists before inserting the milestone
-//     const projectExists = await pool.query("SELECT id FROM projects WHERE project_id = $1", [project_id]);
-
-//     if (projectExists.rows.length === 0) {
-//       return res.status(400).json({ error: "Project ID does not exist" });
-//     }
-
-//     // Insert milestone details into the database
-//     const result = await pool.query(
-//       "INSERT INTO milestones (project_id, milestone_name, description, budget, beginningdate, deadline, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
-//       [project_id, milestone_name, description, budget, beginningDate, deadline, status]
+//     await pool.query(
+//       "UPDATE milestones SET status = $1 WHERE project_id = $2 AND milestone_name = $3",
+//       [status, project_id, milestone_name]
 //     );
-
-//     res.status(201).json({ message: "Milestone saved successfully", milestone: result.rows[0] });
+//     res.json({ message: "Milestone updated successfully" });
 //   } catch (error) {
-//     console.error("Error saving milestone:", error);
-//     res.status(500).json({ error: "Server error" });
+//     res.status(500).json({ error: "Database error" });
 //   }
 // });
 
 
-// Get all projects
-app.get("/api/projects", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT project_id FROM projects");
-    res.json({ projects: result.rows });
-  } catch (error) {
-    res.status(500).json({ error: "Database error" });
-  }
-});
 
-// Get milestones for a project
-app.get("/api/site-engineer/project/:projectId", async (req, res) => {
-  const { projectId } = req.params;
+
+app.use(express.json());
+
+app.get("/api/project-details/:project_id", async (req, res) => {
+  const project_id = req.params.project_id.trim(); // ✅ Corrected trimming
+
   try {
+    // ✅ Fetch project details & milestones from the VIEW
     const result = await pool.query(
-      "SELECT milestone_name, status FROM milestones WHERE project_id = $1",
-      [projectId]
+      "SELECT * FROM project_milestone_view WHERE project_id = $1",
+      [project_id]
     );
-    res.json({ milestones: result.rows });
+
+    // ✅ If no project is found at all, return error
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // ✅ Extract project details (common across all rows)
+    const project = {
+      project_id: result.rows[0].project_id,
+      project_name: result.rows[0].project_name,
+      project_budget: result.rows[0].project_budget,
+      project_start_date: result.rows[0].project_start_date,
+      project_deadline: result.rows[0].project_deadline,
+      project_owner_email: result.rows[0].project_owner_email,
+      milestones: result.rows
+        .filter(row => row.milestone_id) // ✅ Exclude rows without milestones
+        .map(row => ({
+          milestone_id: row.milestone_id,
+          milestone_name: row.milestone_name,
+          milestone_description: row.milestone_description,
+          milestone_start: row.milestone_start,
+          milestone_deadline: row.milestone_deadline,
+          milestone_status: row.milestone_status,
+          milestone_budget: row.milestone_budget,
+        })),
+    };
+
+    // ✅ If there are no milestones, return an empty array
+    if (project.milestones.length === 0) {
+      project.milestones = [];
+    }
+
+    res.status(200).json(project);
   } catch (error) {
-    res.status(500).json({ error: "Database error" });
+    console.error("❌ Error fetching project details:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// Update milestone status
-app.put("/api/site-engineer/milestone", async (req, res) => {
-  const { project_id, milestone_name, status } = req.body;
-  if (!project_id || !milestone_name || !status) {
-    return res.status(400).json({ error: "Missing required fields" });
+
+
+app.put("/api/update-milestone/:milestone_id", async (req, res) => {
+  let { milestone_id } = req.params;
+  const { status, milestone_budget } = req.body;
+
+  // ✅ Trim `milestone_id` to avoid newline issues
+  milestone_id = milestone_id.trim();
+
+  console.log("🔹 Milestone ID received:", milestone_id);
+  console.log("🔹 Status:", status);
+  console.log("🔹 Budget:", milestone_budget);
+
+  // ✅ Validate input fields
+  if (!status || milestone_budget === undefined || milestone_budget === "") {
+    return res.status(400).json({ error: "Status and milestone budget are required" });
   }
 
   try {
-    await pool.query(
-      "UPDATE milestones SET status = $1 WHERE project_id = $2 AND milestone_name = $3",
-      [status, project_id, milestone_name]
+    // ✅ Ensure `milestone_budget` is stored as a number
+    const budgetValue = parseFloat(milestone_budget);
+
+    // ✅ Update milestone table
+    const result = await pool.query(
+      "UPDATE milestones SET status = $1, budget = $2 WHERE milestone_id = $3 RETURNING *",
+      [status, budgetValue, milestone_id]
     );
-    res.json({ message: "Milestone updated successfully" });
+
+    // ✅ If no milestone is found, return 404 error
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Milestone not found" });
+    }
+
+    res.status(200).json({ message: "Milestone updated successfully", milestone: result.rows[0] });
+
   } catch (error) {
-    res.status(500).json({ error: "Database error" });
+    console.error("❌ Error updating milestone:", error);
+
+    // ✅ Handle SQL errors separately
+    if (error.code === "22P02") { // Invalid UUID format
+      return res.status(400).json({ error: "Invalid milestone ID format" });
+    }
+
+    res.status(500).json({ error: "Server error" });
   }
 });
+
+
+
+
+
+
+
 
 
 
