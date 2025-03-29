@@ -116,7 +116,7 @@ const SiteEngineerProjectScreen = () => {
         style={styles.addProjectButton}
         onPress={() => {
           try {
-            navigation.navigate("AddProjectScreen");
+            navigation.navigate("EngineerDashboard");
           } catch (error) {
             console.error("❌ Navigation Error:", error);
             Alert.alert("Error", "Failed to navigate to Add Project page.");
