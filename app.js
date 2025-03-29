@@ -8,9 +8,12 @@ import EngineerDashboard from "./screens/SiteEngineer/EngineerDashboard.jsx";
 import LoginScreen from "./screens/LoginScreen.jsx";
 import SignupScreen from "./screens/SignupScreen.jsx";
 import WelcomeScreen from "./screens/WelcomeScreen.jsx";
-import WorkerDashboard from "./screens/WorkerDashboard.jsx";
-import AvailableTasks from "../screens/AvailableTasks";
-import TaskStatusUpdate from "../screens/TaskStatusUpdate";
+//import WorkerDashboard from "./screens/WorkerDashboard.jsx";
+//import AvailableTasks from "../screens/AvailableTasks";
+//import TaskStatusUpdate from "../screens/TaskStatusUpdate";
+import AssignWorkers from "../screens/Contractor/AssignWorkers.jsx";
+import WorkerManagement from "../screens/Contractor/WorkerManagement.jsx";
+import ViewMilestone from "../screens/Contractor/ViewMilestone.jsx";
 const Stack = createStackNavigator();
 
 export default function App() {
@@ -22,9 +25,12 @@ export default function App() {
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen name="ClientDashboard" component={ClientDashboard} />  
         <Stack.Screen name="EngineerDashboard" component={EngineerDashboard} /> 
-        <Stack.Screen name="WorkerDashboard" component={WorkerDashboard} />
+        {/* <Stack.Screen name="WorkerDashboard" component={WorkerDashboard} />
         <Stack.Screen name="AvailableTasks" component={AvailableTasks} />
-        <Stack.Screen name="TaskStatusUpdate" component={TaskStatusUpdate} />  
+        <Stack.Screen name="TaskStatusUpdate" component={TaskStatusUpdate} /> */}
+        <Stack.Screen name="AssignWorkers" component={AssignWorkers} /> 
+        <Stack.Screen name="WorkerManagement" component={WorkerManagement} />
+        <Stack.Screen name="ViewMilestone" component={ViewMilestone} /> 
       </Stack.Navigator>
     </NavigationContainer>
   );

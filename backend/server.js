@@ -143,6 +143,13 @@ app.post("/api/register", async (req, res) => {
         [userId, email, roleId, anon]
       );
     }
+    if (roleId === 3) {
+      await pool.query(
+          "INSERT INTO contractors (user_id, contractor_email, role_id, project_id, available_workers, total_workers) VALUES ($1, $2, $3, NULL, 0, 0)",
+          [userId, email, roleId]
+      );
+  }
+  
 
     res.status(201).json({ message: "User registered successfully", user: result.rows[0] });
 
@@ -991,6 +998,100 @@ app.put("/api/update-milestone/:milestone_id", async (req, res) => {
   } catch (error) {
     console.error("❌ Error updating milestone:", error);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/api/worker/milestones/:worker_id", async (req, res) => {
+  const { worker_id } = req.params;
+  try {
+      const result = await pool.query(
+          `SELECT m.milestone_id, m.name, m.description, m.deadline, m.status, p.name AS project_name 
+          FROM milestones m 
+          JOIN projects p ON m.project_id = p.project_id
+          JOIN contractor_workers cw ON m.project_id = cw.project_id
+          WHERE cw.worker_id = $1`, 
+          [worker_id]
+      );
+      res.json(result.rows);
+  } catch (error) {
+      console.error("Error fetching worker milestones:", error);
+      res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+// ✅ Get Contractor ID by Email
+app.get("/api/contractor/user-id", async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ error: "Email is required" });
+
+  try {
+      const query = `
+          SELECT user_id FROM contractors WHERE contractor_email = $1
+      `;
+      const result = await pool.query(query, [email]);
+
+      if (result.rows.length === 0) {
+          return res.status(404).json({ error: "Contractor not found" });
+      }
+
+      res.json({ user_id: result.rows[0].user_id });
+  } catch (error) {
+      console.error("❌ Error fetching contractor ID:", error);
+      res.status(500).json({ error: "Internal server error" });
+  }
+});
+app.put("/api/contractor/update-workers", async (req, res) => {
+  const { user_id, total_workers, available_workers } = req.body;
+
+  // ✅ Validate Fields
+  if (!user_id || total_workers === undefined || available_workers === undefined) {
+      return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+      // ✅ Update Worker Count in Database
+      const result = await pool.query(
+          "UPDATE contractors SET total_workers = $1, available_workers = $2 WHERE user_id = $3 RETURNING *",
+          [total_workers, available_workers, user_id]
+      );
+
+      if (result.rowCount === 0) {
+          return res.status(404).json({ error: "Contractor not found" });
+      }
+
+      res.json({ message: "Worker count updated successfully!" });
+  } catch (error) {
+      console.error("❌ Error updating worker count:", error);
+      res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/api/contractor/milestones", async (req, res) => {
+  const { project_id } = req.query; // Get project_id from query parameters
+
+  if (!project_id) {
+      return res.status(400).json({ error: "Project ID is required" });
+  }
+
+  try {
+      const query = `
+          SELECT milestone_id, milestone_name, project_id, status
+          FROM milestones
+          WHERE project_id = $1
+          ORDER BY milestone_name;
+      `;
+
+      const result = await pool.query(query, [project_id]);
+
+      if (result.rows.length === 0) {
+          return res.status(404).json({ error: "No milestones found for this project" });
+      }
+
+      res.json(result.rows);
+  } catch (error) {
+      console.error("❌ Error fetching milestones:", error);
+      res.status(500).json({ error: "Internal server error" });
   }
 });
 

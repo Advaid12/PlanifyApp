@@ -42,7 +42,7 @@ export default function LoginScreen() {
       await AsyncStorage.setItem("userEmail", email); 
 
       if (user.role === "Worker") {
-        navigation.navigate("WorkerDashboard");
+        navigation.navigate("WorkerManagement");
       } else if (user.role === "Client") {
         navigation.navigate("ClientDashboard");
       } else if (user.role === "Site Engineer") {
