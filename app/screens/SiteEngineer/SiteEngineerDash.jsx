@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, Button, Alert, FlatList, TouchableOpacity } from "react-native";
+import { 
+  View, Text, TextInput, Button, Alert, FlatList, TouchableOpacity 
+} from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
@@ -17,6 +19,7 @@ const SiteEngineerProjectScreen = () => {
   const [userId, setUserId] = useState("");
   const [sortBy, setSortBy] = useState("start_date");
 
+  // ✅ Fetch User ID
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -32,10 +35,10 @@ const SiteEngineerProjectScreen = () => {
         console.error("❌ Error fetching user data:", error);
       }
     };
-
     fetchUserData();
   }, []);
 
+  // ✅ Fetch Assigned Projects
   const fetchAssignedProjects = async (user_id) => {
     try {
       const response = await axios.get(`http://localhost:5000/api/site-engineer/projects?user_id=${user_id}`);
@@ -45,6 +48,7 @@ const SiteEngineerProjectScreen = () => {
     }
   };
 
+  // ✅ Fetch Milestones for Selected Project
   const fetchMilestones = async (projectId) => {
     try {
       const response = await axios.get(`http://localhost:5000/api/project-details/${projectId}`);
@@ -55,17 +59,20 @@ const SiteEngineerProjectScreen = () => {
     }
   };
 
+  // ✅ Handle Project Selection
   const handleProjectSelect = (projectId) => {
     setSelectedProject(projectId);
     fetchMilestones(projectId);
   };
 
+  // ✅ Handle Milestone Selection
   const handleMilestoneSelect = (milestone) => {
     setSelectedMilestone(milestone);
     setStatus(milestone.milestone_status);
-    setBudget(milestone.milestone_budget.toString());
+    setBudget(milestone.milestone_budget?.toString() || "0"); // Ensure string format
   };
 
+  // ✅ Update Milestone Status & Budget
   const updateMilestone = async () => {
     if (!selectedMilestone) {
       Alert.alert("Error", "❌ Please select a milestone.");
@@ -73,19 +80,21 @@ const SiteEngineerProjectScreen = () => {
     }
 
     try {
-      const response = await axios.put(`http://localhost:5000/api/update-milestone/${selectedMilestone.milestone_id}`, {
-        status,
-        milestone_budget: budget,
-      });
+      console.log("Updating Milestone ID:", selectedMilestone.milestone_id); // Debugging log
+      const response = await axios.put(
+        `http://localhost:5000/api/update-milestone/${selectedMilestone.milestone_id}`,
+        { status, milestone_budget: budget }
+      );
 
       Alert.alert("Success", response.data.message || "✅ Milestone updated successfully!");
-      fetchMilestones(selectedProject);
+      fetchMilestones(selectedProject); // Refresh milestones
     } catch (error) {
-      console.error("❌ Error updating milestone:", error);
+      console.error("❌ Error updating milestone:", error.response?.data || error);
       Alert.alert("Error", "❌ Failed to update milestone.");
     }
   };
 
+  // ✅ Sorting Milestones
   const sortMilestones = (a, b) => {
     switch (sortBy) {
       case "start_date":
@@ -102,12 +111,24 @@ const SiteEngineerProjectScreen = () => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.addProjectButton} onPress={() => navigation.navigate("AddProjectScreen")}>
+      {/* ✅ Add Project Button */}
+      <TouchableOpacity
+        style={styles.addProjectButton}
+        onPress={() => {
+          try {
+            navigation.navigate("AddProjectScreen");
+          } catch (error) {
+            console.error("❌ Navigation Error:", error);
+            Alert.alert("Error", "Failed to navigate to Add Project page.");
+          }
+        }}
+      >
         <Text style={styles.addProjectButtonText}>Add Project</Text>
       </TouchableOpacity>
 
       <Text style={styles.title}>Project & Milestone Management</Text>
 
+      {/* ✅ Project Selection */}
       <Text style={styles.label}>Select a Project:</Text>
       <Picker selectedValue={selectedProject} onValueChange={handleProjectSelect} style={styles.picker}>
         <Picker.Item label="-- Select Project --" value="" />
@@ -116,6 +137,7 @@ const SiteEngineerProjectScreen = () => {
         ))}
       </Picker>
 
+      {/* ✅ Sort Milestones */}
       <Text style={styles.label}>Sort By:</Text>
       <Picker selectedValue={sortBy} onValueChange={setSortBy} style={styles.picker}>
         <Picker.Item label="Start Date" value="start_date" />
@@ -123,6 +145,7 @@ const SiteEngineerProjectScreen = () => {
         <Picker.Item label="Budget" value="budget" />
       </Picker>
 
+      {/* ✅ Milestone List */}
       {milestones.length > 0 ? (
         <FlatList
           data={milestones.sort(sortMilestones)}
@@ -139,6 +162,30 @@ const SiteEngineerProjectScreen = () => {
         />
       ) : (
         <Text style={styles.noMilestoneText}>No milestones available.</Text>
+      )}
+
+      {/* ✅ Milestone Editing Section */}
+      {selectedMilestone && (
+        <View style={styles.editSection}>
+          <Text style={styles.label}>Update Status:</Text>
+          <TextInput
+            value={status}
+            onChangeText={setStatus}
+            placeholder="Enter new status"
+            style={styles.input}
+          />
+
+          <Text style={styles.label}>Update Budget:</Text>
+          <TextInput
+            value={budget}
+            onChangeText={setBudget}
+            placeholder="Enter new budget"
+            keyboardType="numeric"
+            style={styles.input}
+          />
+
+          <Button title="Update Milestone" onPress={updateMilestone} />
+        </View>
       )}
     </View>
   );

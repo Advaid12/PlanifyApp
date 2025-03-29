@@ -7,11 +7,9 @@ import WelcomeScreen from "../screens/WelcomeScreen";
 import LoginScreen from "../screens/LoginScreen";
 import SignupScreen from "../screens/SignupScreen.jsx";
 import ClientDashboard from "../screens/ClientDashboard";
-import EngineerDashboard from "../screens/SiteEngineer/EngineerDashboard";
 import WorkerDashboard from "../screens/WorkerDashboard";
 import AvailableTasks from "../screens/AvailableTasks";
 import TaskStatusUpdate from "../screens/TaskStatusUpdate";
-import SiteEngineerProjectScreen from "../screens/SiteEngineer/SiteEngineerDash.jsx";
 
 const Stack = createStackNavigator();
 
@@ -23,11 +21,9 @@ export default function AppNavigator() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen name="ClientDashboard" component={ClientDashboard} />  
-        <Stack.Screen name="EngineerDashboard" component={EngineerDashboard} /> 
         <Stack.Screen name="WorkerDashboard" component={WorkerDashboard} />
         <Stack.Screen name="AvailableTasks" component={AvailableTasks} />
-        <Stack.Screen name="TaskStatusUpdate" component={TaskStatusUpdate} />  
-        <Stack.Screen name="site" component={SiteEngineerProjectScreen} />   
+        <Stack.Screen name="TaskStatusUpdate" component={TaskStatusUpdate} />    
       </Stack.Navigator>
     </NavigationContainer>
   );
