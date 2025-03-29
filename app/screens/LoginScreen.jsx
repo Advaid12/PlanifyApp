@@ -46,7 +46,7 @@ export default function LoginScreen() {
       } else if (user.role === "Client") {
         navigation.navigate("ClientDashboard");
       } else if (user.role === "Site Engineer") {
-        navigation.navigate("EngineerDashboard");
+        navigation.navigate("site-engineer");
       } else {
         navigation.navigate("Welcome");
       }

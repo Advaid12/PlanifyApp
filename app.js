@@ -4,7 +4,7 @@ import React from "react";
 
 // Import Screens
 import ClientDashboard from "./screens/ClientDashboard.jsx";
-import EngineerDashboard from "./screens/EngineerDashboard.jsx";
+import EngineerDashboard from "./screens/SiteEngineer/EngineerDashboard.jsx";
 import LoginScreen from "./screens/LoginScreen.jsx";
 import SignupScreen from "./screens/SignupScreen.jsx";
 import WelcomeScreen from "./screens/WelcomeScreen.jsx";

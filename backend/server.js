@@ -62,6 +62,43 @@ pool.connect((err) => {
 });
 
 // **🟢 User Registration API**
+// app.post("/api/register", async (req, res) => {
+//   const { name, email, password, role } = req.body;
+
+//   if (!name || !email || !password || !role) {
+//     return res.status(400).json({ error: "All fields are required" });
+//   }
+
+//   try {
+//     const roleQuery = await pool.query("SELECT id FROM roles WHERE role_name = $1", [role]);
+//     if (roleQuery.rows.length === 0) {
+//       return res.status(400).json({ error: "Invalid role" });
+//     }
+//     const roleId = roleQuery.rows[0].id;
+
+//     const existingUser = await pool.query("SELECT 1 FROM users WHERE email = $1 LIMIT 1", [email]);
+//     if (existingUser.rows.length > 0) {
+//       return res.status(400).json({ error: "Email already exists" });
+//     }
+
+//     if (password.length < 8 || !/\d/.test(password) || !/[!@#$%^&*]/.test(password)) {
+//       return res.status(400).json({ error: "Password must be at least 8 characters, include a number and a special character." });
+//     }
+
+//     const hashedPassword = await bcrypt.hash(password, 10);
+
+//     const result = await pool.query(
+//       "INSERT INTO users (name, email, password, role_id) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role_id",
+//       [name, email, hashedPassword, roleId]
+//     );
+//     res.status(201).json({ message: "User registered successfully", user: result.rows[0] });
+//   } catch (err) {
+//     console.error("Error registering user:", err);
+//     res.status(500).json({ error: "Server error" });
+//   }
+// });
+
+// new user
 app.post("/api/register", async (req, res) => {
   const { name, email, password, role } = req.body;
 
@@ -70,34 +107,51 @@ app.post("/api/register", async (req, res) => {
   }
 
   try {
+    // Get role ID based on role name
     const roleQuery = await pool.query("SELECT id FROM roles WHERE role_name = $1", [role]);
     if (roleQuery.rows.length === 0) {
       return res.status(400).json({ error: "Invalid role" });
     }
     const roleId = roleQuery.rows[0].id;
 
+    // Check if email already exists
     const existingUser = await pool.query("SELECT 1 FROM users WHERE email = $1 LIMIT 1", [email]);
     if (existingUser.rows.length > 0) {
       return res.status(400).json({ error: "Email already exists" });
     }
 
+    // Validate password strength
     if (password.length < 8 || !/\d/.test(password) || !/[!@#$%^&*]/.test(password)) {
       return res.status(400).json({ error: "Password must be at least 8 characters, include a number and a special character." });
     }
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Insert user into users table
     const result = await pool.query(
-      "INSERT INTO users (name, email, password, role_id) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role_id",
+      "INSERT INTO users (name, email, password, role_id) VALUES ($1, $2, $3, $4) RETURNING id, email, role_id",
       [name, email, hashedPassword, roleId]
     );
 
+    const userId = result.rows[0].id;
+    const anon = "not_available";
+    // If role is Site Engineer (role_id = 2), insert into site_engineer_projects
+    if (roleId === 2) {
+      await pool.query(
+        "INSERT INTO site_engineer_projects (user_id, site_engineer_email, role_id, project_id) VALUES ($1, $2, $3, $4)",
+        [userId, email, roleId, anon]
+      );
+    }
+
     res.status(201).json({ message: "User registered successfully", user: result.rows[0] });
+
   } catch (err) {
-    console.error("Error registering user:", err);
-    res.status(500).json({ error: "Server error" });
+    console.error("❌ Error registering user:", err); // Log the error to see the issue
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
+
 
 // **🔵 User Login API**
 app.post("/api/login", async (req, res) => {
@@ -598,50 +652,315 @@ app.post("/api/save-milestone", async (req, res) => {
 // });
 
 
+//commentd here
 
 
-app.use(express.json());
+// app.get("/api/project-details/:project_id", async (req, res) => {
+//   const project_id = req.params.project_id.trim(); // ✅ Corrected trimming
 
-app.get("/api/project-details/:project_id", async (req, res) => {
-  const project_id = req.params.project_id.trim(); // ✅ Corrected trimming
+//   try {
+//     // ✅ Fetch project details & milestones from the VIEW
+//     const result = await pool.query(
+//       "SELECT * FROM project_milestone_view WHERE project_id = $1",
+//       [project_id]
+//     );
+
+//     // ✅ If no project is found at all, return error
+//     if (result.rows.length === 0) {
+//       return res.status(404).json({ error: "Project not found" });
+//     }
+
+//     // ✅ Extract project details (common across all rows)
+//     const project = {
+//       project_id: result.rows[0].project_id,
+//       project_name: result.rows[0].project_name,
+//       project_budget: result.rows[0].project_budget,
+//       project_start_date: result.rows[0].project_start_date,
+//       project_deadline: result.rows[0].project_deadline,
+//       project_owner_email: result.rows[0].project_owner_email,
+//       milestones: result.rows
+//         .filter(row => row.milestone_id) // ✅ Exclude rows without milestones
+//         .map(row => ({
+//           milestone_id: row.milestone_id,
+//           milestone_name: row.milestone_name,
+//           milestone_description: row.milestone_description,
+//           milestone_start: row.milestone_start,
+//           milestone_deadline: row.milestone_deadline,
+//           milestone_status: row.milestone_status,
+//           milestone_budget: row.milestone_budget,
+//         })),
+//     };
+
+//     // ✅ If there are no milestones, return an empty array
+//     if (project.milestones.length === 0) {
+//       project.milestones = [];
+//     }
+
+//     res.status(200).json(project);
+//   } catch (error) {
+//     console.error("❌ Error fetching project details:", error);
+//     res.status(500).json({ error: "Server error" });
+//   }
+// });
+
+
+
+// app.put("/api/update-milestone/:milestone_id", async (req, res) => {
+//   let { milestone_id } = req.params;
+//   const { status, milestone_budget } = req.body;
+
+//   // ✅ Trim `milestone_id` to avoid newline issues
+//   milestone_id = milestone_id.trim();
+
+//   console.log("🔹 Milestone ID received:", milestone_id);
+//   console.log("🔹 Status:", status);
+//   console.log("🔹 Budget:", milestone_budget);
+
+//   // ✅ Validate input fields
+//   if (!status || milestone_budget === undefined || milestone_budget === "") {
+//     return res.status(400).json({ error: "Status and milestone budget are required" });
+//   }
+
+//   try {
+//     // ✅ Ensure `milestone_budget` is stored as a number
+//     const budgetValue = parseFloat(milestone_budget);
+
+//     // ✅ Update milestone table
+//     const result = await pool.query(
+//       "UPDATE milestones SET status = $1, budget = $2 WHERE milestone_id = $3 RETURNING *",
+//       [status, budgetValue, milestone_id]
+//     );
+
+//     // ✅ If no milestone is found, return 404 error
+//     if (result.rowCount === 0) {
+//       return res.status(404).json({ error: "Milestone not found" });
+//     }
+
+//     res.status(200).json({ message: "Milestone updated successfully", milestone: result.rows[0] });
+
+//   } catch (error) {
+//     console.error("❌ Error updating milestone:", error);
+
+//     // ✅ Handle SQL errors separately
+//     if (error.code === "22P02") { // Invalid UUID format
+//       return res.status(400).json({ error: "Invalid milestone ID format" });
+//     }
+
+//     res.status(500).json({ error: "Server error" });
+//   }
+// });
+
+
+//site-engineer
+
+
+
+app.put("/api/site-engineer/assign-project", async (req, res) => {
+  const { site_engineer_id, project_id } = req.body;
+
+  if (!site_engineer_id || !project_id) {
+    return res.status(400).json({ error: "Site Engineer ID and Project ID are required" });
+  }
 
   try {
-    // ✅ Fetch project details & milestones from the VIEW
-    const result = await pool.query(
-      "SELECT * FROM project_milestone_view WHERE project_id = $1",
+    // 🔍 Check if the project is already assigned to another site engineer
+    const existingProject = await pool.query(
+      "SELECT * FROM site_engineer_projects WHERE project_id = $1 AND project_id != 'not_available'",
       [project_id]
     );
 
-    // ✅ If no project is found at all, return error
+    if (existingProject.rows.length > 0) {
+      return res.status(409).json({ error: "❌ This project is already assigned to another engineer." });
+    }
+
+    // 🔍 Check if the site engineer already has a project marked as 'not_available'
+    const checkResult = await pool.query(
+      "SELECT * FROM site_engineer_projects WHERE user_id = $1 AND project_id = 'not_available'",
+      [site_engineer_id]
+    );
+
+    if (checkResult.rows.length > 0) {
+      // ✅ Update the existing row where project_id is 'not_available'
+      const updateResult = await pool.query(
+        "UPDATE site_engineer_projects SET project_id = $1 WHERE user_id = $2 AND project_id = 'not_available' RETURNING *",
+        [project_id, site_engineer_id]
+      );
+
+      return res.status(200).json({
+        message: "✅ Project updated successfully!",
+        data: updateResult.rows[0],
+      });
+    } else {
+      // ✅ Insert a new assignment if no 'not_available' project exists and project is not taken
+      const insertResult = await pool.query(
+        "INSERT INTO site_engineer_projects (user_id, site_engineer_email, role_id, project_id) VALUES ($1, (SELECT email FROM users WHERE id = $1), 2, $2) RETURNING *",
+        [site_engineer_id, project_id]
+      );
+
+      return res.status(200).json({
+        message: "✅ Project assigned successfully!",
+        data: insertResult.rows[0],
+      });
+    }
+  } catch (error) {
+    console.error("❌ Error assigning project:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+
+app.delete("/api/site-engineer/remove-project", async (req, res) => {
+  const { site_engineer_id, project_id } = req.body;
+
+  if (!site_engineer_id || !project_id) {
+    return res.status(400).json({ error: "Site Engineer ID and Project ID are required" });
+  }
+
+  try {
+    // ✅ Check if the project is actually assigned to the engineer
+    const checkResult = await pool.query(
+      "SELECT * FROM site_engineer_projects WHERE user_id = $1 AND project_id = $2",
+      [site_engineer_id, project_id]
+    );
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: "❌ No such project assigned to this engineer." });
+    }
+
+    // ✅ Remove the assigned project
+    await pool.query(
+      "DELETE FROM site_engineer_projects WHERE user_id = $1 AND project_id = $2",
+      [site_engineer_id, project_id]
+    );
+
+    return res.status(200).json({ message: "✅ Project removed successfully!" });
+  } catch (error) {
+    console.error("❌ Error removing project:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+
+
+app.get("/api/available-projects", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT project_id FROM projects WHERE project_id NOT IN (SELECT project_id FROM site_engineer_projects WHERE project_id IS NOT NULL)"
+    );
+    res.json({ projects: result.rows });
+  } catch (error) {
+    console.error("Error fetching available projects:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+const { v4: isUuid } = require("uuid"); // Import UUID validator
+
+app.put("/api/site-engineer/select-project", async (req, res) => {
+  const { user_id, project_id } = req.body;
+
+  // ✅ Validate UUID format for `user_id`
+  if (!isUuid(user_id)) {
+    return res.status(400).json({ error: "Invalid user ID format" });
+  }
+
+  if (!project_id) {
+    return res.status(400).json({ error: "Project ID is required" });
+  }
+
+  try {
+    const result = await pool.query(
+      "UPDATE site_engineer_projects SET project_id = $1 WHERE user_id = $2 AND project_id IS NULL RETURNING *",
+      [project_id, user_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "No unassigned site engineer found." });
+    }
+
+    res.status(200).json({ message: "Project assigned successfully", data: result.rows[0] });
+  } catch (error) {
+    console.error("Error assigning project:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/api/site-engineer/user-id", async (req, res) => {
+  const { email } = req.query;
+
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT user_id FROM site_engineer_projects WHERE site_engineer_email = $1",
+      [email]
+    );
+
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Project not found" });
+      return res.status(404).json({ error: "User ID not found for this email" });
     }
 
-    // ✅ Extract project details (common across all rows)
+    res.json({ user_id: result.rows[0].user_id });
+  } catch (error) {
+    console.error("Error fetching user ID:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/api/site-engineer/projects", async (req, res) => {
+  const { user_id } = req.query;
+
+  if (!user_id) {
+    return res.status(400).json({ error: "User ID is required" });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT p.project_id, p.name FROM projects p JOIN site_engineer_projects sp ON p.project_id = sp.project_id WHERE sp.user_id = $1",
+      [user_id]
+    );
+
+    res.json({ projects: result.rows });
+  } catch (error) {
+    console.error("❌ Error fetching projects:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/api/project-details/:project_id", async (req, res) => {
+  const project_id = req.params.project_id.trim(); // ✅ Trim whitespace
+
+  try {
+    // ✅ Check if the project exists
+    const projectCheck = await pool.query("SELECT * FROM projects WHERE project_id = $1", [project_id]);
+
+    if (projectCheck.rows.length === 0) {
+      return res.status(404).json({ error: `❌ Project ID ${project_id} not found.` });
+    }
+
+    // ✅ Fetch milestones from `milestones` table
+    const milestoneResult = await pool.query(
+      "SELECT * FROM milestones WHERE project_id = $1",
+      [project_id]
+    );
+
+    // ✅ Structure response
     const project = {
-      project_id: result.rows[0].project_id,
-      project_name: result.rows[0].project_name,
-      project_budget: result.rows[0].project_budget,
-      project_start_date: result.rows[0].project_start_date,
-      project_deadline: result.rows[0].project_deadline,
-      project_owner_email: result.rows[0].project_owner_email,
-      milestones: result.rows
-        .filter(row => row.milestone_id) // ✅ Exclude rows without milestones
-        .map(row => ({
-          milestone_id: row.milestone_id,
-          milestone_name: row.milestone_name,
-          milestone_description: row.milestone_description,
-          milestone_start: row.milestone_start,
-          milestone_deadline: row.milestone_deadline,
-          milestone_status: row.milestone_status,
-          milestone_budget: row.milestone_budget,
-        })),
+      project_id: projectCheck.rows[0].project_id,
+      project_name: projectCheck.rows[0].name,
+      milestones: milestoneResult.rows.map((row) => ({
+        milestone_id: row.milestone_id,
+        milestone_name: row.milestone_name,
+        milestone_status: row.status,
+        milestone_budget: row.budget,
+        milestone_start: row.beginningdate,
+        milestone_deadline: row.deadline,
+      })),
     };
-
-    // ✅ If there are no milestones, return an empty array
-    if (project.milestones.length === 0) {
-      project.milestones = [];
-    }
 
     res.status(200).json(project);
   } catch (error) {
@@ -650,62 +969,30 @@ app.get("/api/project-details/:project_id", async (req, res) => {
   }
 });
 
-
-
 app.put("/api/update-milestone/:milestone_id", async (req, res) => {
-  let { milestone_id } = req.params;
+  const { milestone_id } = req.params;
   const { status, milestone_budget } = req.body;
 
-  // ✅ Trim `milestone_id` to avoid newline issues
-  milestone_id = milestone_id.trim();
-
-  console.log("🔹 Milestone ID received:", milestone_id);
-  console.log("🔹 Status:", status);
-  console.log("🔹 Budget:", milestone_budget);
-
-  // ✅ Validate input fields
-  if (!status || milestone_budget === undefined || milestone_budget === "") {
-    return res.status(400).json({ error: "Status and milestone budget are required" });
+  if (!milestone_id || !status || !milestone_budget) {
+    return res.status(400).json({ error: "All fields are required" });
   }
 
   try {
-    // ✅ Ensure `milestone_budget` is stored as a number
-    const budgetValue = parseFloat(milestone_budget);
-
-    // ✅ Update milestone table
     const result = await pool.query(
       "UPDATE milestones SET status = $1, budget = $2 WHERE milestone_id = $3 RETURNING *",
-      [status, budgetValue, milestone_id]
+      [status, milestone_budget, milestone_id]
     );
 
-    // ✅ If no milestone is found, return 404 error
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "Milestone not found" });
     }
 
-    res.status(200).json({ message: "Milestone updated successfully", milestone: result.rows[0] });
-
+    res.json({ message: "✅ Milestone updated successfully!", data: result.rows[0] });
   } catch (error) {
     console.error("❌ Error updating milestone:", error);
-
-    // ✅ Handle SQL errors separately
-    if (error.code === "22P02") { // Invalid UUID format
-      return res.status(400).json({ error: "Invalid milestone ID format" });
-    }
-
     res.status(500).json({ error: "Server error" });
   }
 });
-
-
-
-
-
-
-
-
-
-
 
 
 
