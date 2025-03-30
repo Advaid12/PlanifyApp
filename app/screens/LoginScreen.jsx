@@ -42,7 +42,7 @@ export default function LoginScreen() {
       await AsyncStorage.setItem("userEmail", email); 
 
       if (user.role === "Worker") {
-        navigation.navigate("WorkerManagement");
+        navigation.navigate("ViewMilestone");
       } else if (user.role === "Client") {
         navigation.navigate("ClientDashboard");
       } else if (user.role === "Site Engineer") {
@@ -57,7 +57,6 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
-  
 
   return (
     <View style={styles.container}>
@@ -88,6 +87,12 @@ export default function LoginScreen() {
       <TouchableOpacity onPress={() => navigation.navigate("Signup")}>
         <Text style={styles.link}>Don't have an account? Sign up</Text>
       </TouchableOpacity>
+
+      {/* ✅ Added Chat Button */}
+      <TouchableOpacity onPress={() => navigation.navigate("JoinChat")} style={styles.chatButton}>
+        <Text style={styles.chatButtonText}>Go to Chat</Text>
+      </TouchableOpacity>
+
     </View>
   );
 }

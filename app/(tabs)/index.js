@@ -13,6 +13,9 @@ import AssignWorkers from "../screens/Contractor/AssignWorkers.jsx";
 import WorkerManagement from "../screens/Contractor/WorkerManagement.jsx";
 import ViewMilestone from "../screens/Contractor/ViewMilestone.jsx";
 import { View } from "react-native-web";
+import ContractorDashboard from "../screens/Contractor/ContractorDashboard.jsx";
+
+
 
 
 const Stack = createStackNavigator();
@@ -32,6 +35,7 @@ export default function Index() {
       <Stack.Screen name="AssignWorkers" component={AssignWorkers} /> 
       <Stack.Screen name="WorkerManagement" component={WorkerManagement} />
       <Stack.Screen name="ViewMilestone" component={ViewMilestone} />
+      <Stack.Screen name="ContractorDashboard" component={ContractorDashboard}/>
     </Stack.Navigator>
   );
 }
