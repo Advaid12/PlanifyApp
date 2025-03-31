@@ -3,6 +3,7 @@ import { createStackNavigator } from "@react-navigation/stack";
 import React from "react";
 
 // Import Screens
+import ClientHome from "./screens/ClientHome.jsx";
 import ClientDashboard from "./screens/ClientDashboard.jsx";
 import EngineerDashboard from "./screens/SiteEngineer/EngineerDashboard.jsx";
 import LoginScreen from "./screens/LoginScreen.jsx";
@@ -26,6 +27,7 @@ export default function App() {
         <Stack.Screen name="Welcome" component={WelcomeScreen} /> 
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
+        <Stack.Screen name="ClientHome" component={ClientHome} />  
         <Stack.Screen name="ClientDashboard" component={ClientDashboard} />  
         <Stack.Screen name="EngineerDashboard" component={EngineerDashboard} /> 
         {/* <Stack.Screen name="WorkerDashboard" component={WorkerDashboard} />

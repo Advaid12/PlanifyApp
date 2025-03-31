@@ -44,7 +44,7 @@ export default function LoginScreen() {
       if (user.role === "Worker") {
         navigation.navigate("ViewMilestone");
       } else if (user.role === "Client") {
-        navigation.navigate("ClientDashboard");
+        navigation.navigate("ClientHome");
       } else if (user.role === "Site Engineer") {
         navigation.navigate("site-engineer");
       } else {
