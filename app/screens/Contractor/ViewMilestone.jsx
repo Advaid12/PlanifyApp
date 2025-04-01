@@ -41,9 +41,9 @@ export default function ViewMilestones() {
                 <TouchableOpacity style={styles.topButton} onPress={() => navigation.navigate("AssignWorkers")}> 
                     <Text style={styles.topButtonText}>Assign Task</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.topButton} onPress={() => navigation.navigate("WorkerManagement")}> 
+                {/* <TouchableOpacity style={styles.topButton} onPress={() => navigation.navigate("WorkerManagement")}> 
                     <Text style={styles.topButtonText}>Update Worker Count</Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
             </View>
 
             <Text style={styles.title}>Milestone Status</Text>

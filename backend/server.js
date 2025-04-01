@@ -13,11 +13,12 @@ const http = require("http");
 const app = express();
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
-// const io = new Server(server, {
-//   cors: {
-//     origin: "*",
-//   },
-// });
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+  },
+});
+
 const SECRET_KEY = process.env.SECRET_KEY || "your_secret_key";
 
 app.use(express.json());
@@ -1118,14 +1119,14 @@ app.get("/api/contractor/projects", async (req, res) => {
 });
 
 app.put("/api/contractor/assign-project", async (req, res) => {
-  const { contractor_id, project_id } = req.body;
+  const { contractor_id, project_id, num_workers } = req.body;
 
-  if (!contractor_id || !project_id) {
-    return res.status(400).json({ error: "Contractor ID and Project ID are required" });
+  if (!contractor_id || !project_id || !num_workers) {
+    return res.status(400).json({ error: "Contractor ID, Project ID, and Number of Workers are required" });
   }
 
   try {
-    // 🔍 Check if the project is already assigned to another site engineer
+    // 🔍 Check if the project is already assigned to another contractor
     const existingProject = await pool.query(
       "SELECT * FROM contractor_projects WHERE project_id = $1 AND project_id != 'not_available'",
       [project_id]
@@ -1135,7 +1136,7 @@ app.put("/api/contractor/assign-project", async (req, res) => {
       return res.status(409).json({ error: "❌ This project is already assigned to another contractor." });
     }
 
-    // 🔍 Check if the site engineer already has a project marked as 'not_available'
+    // 🔍 Check if the contractor already has a project marked as 'not_available'
     const checkResult = await pool.query(
       "SELECT * FROM contractor_projects WHERE user_id = $1 AND project_id = 'not_available'",
       [contractor_id]
@@ -1144,8 +1145,8 @@ app.put("/api/contractor/assign-project", async (req, res) => {
     if (checkResult.rows.length > 0) {
       // ✅ Update the existing row where project_id is 'not_available'
       const updateResult = await pool.query(
-        "UPDATE contractor_projects SET project_id = $1 WHERE user_id = $2 AND project_id = 'not_available' RETURNING *",
-        [project_id, contractor_id]
+        "UPDATE contractor_projects SET project_id = $1, total_workers_assigned = $2 WHERE user_id = $3 AND project_id = 'not_available' RETURNING *",
+        [project_id, num_workers, contractor_id]
       );
 
       return res.status(200).json({
@@ -1153,10 +1154,10 @@ app.put("/api/contractor/assign-project", async (req, res) => {
         data: updateResult.rows[0],
       });
     } else {
-      // ✅ Insert a new assignment if no 'not_available' project exists and project is not taken
+      // ✅ Insert a new assignment with worker count
       const insertResult = await pool.query(
-        "INSERT INTO contractor_projects (user_id, contractor_email, role_id, project_id) VALUES ($1, (SELECT email FROM users WHERE id = $1), 2, $2) RETURNING *",
-        [contractor_id, project_id]
+        "INSERT INTO contractor_projects (user_id, contractor_email, role_id, project_id, total_workers_assigned) VALUES ($1, (SELECT email FROM users WHERE id = $1), 2, $2, $3) RETURNING *",
+        [contractor_id, project_id, num_workers]
       );
 
       return res.status(200).json({
@@ -1170,22 +1171,23 @@ app.put("/api/contractor/assign-project", async (req, res) => {
   }
 });
 
+
 app.delete("/api/contractor/remove-project", async (req, res) => {
   const { contractor_id, project_id } = req.body;
 
   if (!contractor_id || !project_id) {
-    return res.status(400).json({ error: "Site Engineer ID and Project ID are required" });
+    return res.status(400).json({ error: "Contractor ID and Project ID are required" });
   }
 
   try {
-    // ✅ Check if the project is actually assigned to the engineer
+    // ✅ Check if the project is actually assigned to the contractor
     const checkResult = await pool.query(
       "SELECT * FROM contractor_projects WHERE user_id = $1 AND project_id = $2",
       [contractor_id, project_id]
     );
 
     if (checkResult.rows.length === 0) {
-      return res.status(404).json({ error: "❌ No such project assigned to this engineer." });
+      return res.status(404).json({ error: "❌ No such project assigned to this contractor." });
     }
 
     // ✅ Remove the assigned project
@@ -1194,12 +1196,20 @@ app.delete("/api/contractor/remove-project", async (req, res) => {
       [contractor_id, project_id]
     );
 
-    return res.status(200).json({ message: "✅ Project removed successfully!" });
+    // ✅ Optionally, update the total workers assigned to the project (decrement by 1 or based on a specific logic)
+    await pool.query(
+      "UPDATE contractor_projects SET total_workers_assigned = total_workers_assigned - 1 WHERE project_id = $1",
+      [project_id]
+    );
+
+    return res.status(200).json({ message: "✅ Project removed successfully and total workers updated!" });
   } catch (error) {
     console.error("❌ Error removing project:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
+
+
 // app.put("/api/contractor/update-workers", async (req, res) => {
 //   const { user_id, total_workers, available_workers } = req.body;
 
@@ -1254,8 +1264,190 @@ app.get("/api/contractor/milestones", async (req, res) => {
   }
 });
 
+// 1. Fetch Projects for a Contractor
+app.get("/api/projects", async (req, res) => {
+  const contractorId = req.query.contractor_id;
+
+  if (!contractorId) {
+      return res.status(400).json({ error: "Contractor ID is required" });
+  }
+
+  try {
+      const result = await pool.query(
+          `SELECT p.project_id, p.name, p.budget, p.beginningdate, p.deadline 
+           FROM public.projects p 
+           JOIN public.contractor_projects cp ON p.project_id = cp.project_id 
+           WHERE cp.user_id = $1`, [contractorId]
+      );
+
+      const projects = result.rows;
+
+      if (projects.length === 0) {
+          return res.status(404).json({ message: "No projects found for this contractor" });
+      }
+
+      res.json(projects);
+  } catch (error) {
+      console.error("❌ Error fetching projects:", error);
+      res.status(500).json({ error: "Server error" });
+  }
+});
+
+// 2. Fetch Milestones for a Project
+app.get("/api/milestones", async (req, res) => {
+  const projectId = req.query.project_id;
+
+  if (!projectId) {
+      return res.status(400).json({ error: "Project ID is required" });
+  }
+
+  try {
+      const result = await pool.query(
+          "SELECT milestone_id, milestone_name, beginningdate, deadline, status FROM public.milestones WHERE project_id = $1", 
+          [projectId]
+      );
+
+      const milestones = result.rows;
+
+      if (milestones.length === 0) {
+          return res.status(404).json({ message: "No milestones found for this project" });
+      }
+
+      res.json(milestones);
+  } catch (error) {
+      console.error("❌ Error fetching milestones:", error);
+      res.status(500).json({ error: "Server error" });
+  }
+});
+
+// 3. Assign Workers to a Milestone
+app.post("/api/assign-workers", async (req, res) => {
+  const { contractor_id, project_id, milestone_id, num_workers } = req.body;
+
+  if (!contractor_id || !project_id || !milestone_id || !num_workers) {
+      return res.status(400).json({ error: "All fields are required" });
+  }
+
+  try {
+      // Step 1: Check if there are enough workers in the contractor's project
+      const availableWorkersResult = await pool.query(
+          `SELECT total_workers_assigned 
+           FROM public.contractor_projects 
+           WHERE user_id = $1 AND project_id = $2`, [contractor_id, project_id]
+      );
+
+      if (availableWorkersResult.rows.length === 0) {
+          return res.status(404).json({ error: "Project not found for this contractor" });
+      }
+
+      const availableWorkers = availableWorkersResult.rows[0].total_workers_assigned;
+
+      // Step 2: If there are not enough workers, return an error
+      if (availableWorkers < num_workers) {
+          return res.status(400).json({ error: "Not enough workers available for this project" });
+      }
+
+      // Step 3: Subtract the workers from the contractor_projects table
+      await pool.query(
+          `UPDATE public.contractor_projects 
+           SET total_workers_assigned = total_workers_assigned - $1 
+           WHERE user_id = $2 AND project_id = $3`,
+          [num_workers, contractor_id, project_id]
+      );
+
+      // Step 4: Insert or update the worker assignment in the `worker_assignments` table
+      const result = await pool.query(
+          `
+          INSERT INTO public.worker_assignments (id, project_id, milestone_id, workers_assigned)
+          VALUES (gen_random_uuid(), $1, $2, $3)
+          ON CONFLICT (project_id, milestone_id) 
+          DO UPDATE SET workers_assigned = worker_assignments.workers_assigned + $3
+          RETURNING id
+          `, 
+          [project_id, milestone_id, num_workers]
+      );
+
+      const assignmentId = result.rows[0].id;
 
 
+      res.json({ message: `Successfully assigned ${num_workers} workers to milestone`, assignmentId });
+  } catch (error) {
+      console.error("❌ Error assigning workers:", error);
+      res.status(500).json({ error: "Server error" });
+  }
+});
 
+let clients = [];
+
+// ✅ WebSocket Connection (Frontend Listens for Alerts)
+io.on("connection", (socket) => {
+    console.log("✅ A frontend dashboard connected:", socket.id);
+
+    // Store the connected client
+    clients.push(socket);
+
+    // Handle disconnect
+    socket.on("disconnect", () => {
+        clients = clients.filter(client => client !== socket);
+        console.log("❌ A frontend dashboard disconnected:", socket.id);
+    });
+});
+
+// ✅ Check Budget Overrun API
+app.get("/api/check-budget/:project_id", async (req, res) => {
+    const { project_id } = req.params;
+
+    try {
+        // ✅ 1. Fetch project budget
+        const projectQuery = await pool.query(
+            "SELECT budget FROM projects WHERE project_id = $1",
+            [project_id]
+        );
+
+        if (projectQuery.rows.length === 0) {
+            return res.status(404).json({ error: "❌ Project not found." });
+        }
+
+        const projectBudget = parseFloat(projectQuery.rows[0].budget);
+
+        // ✅ 2. Calculate total milestone budget
+        const milestoneQuery = await pool.query(
+            "SELECT COALESCE(SUM(budget), 0) AS total_milestone_budget FROM milestones WHERE project_id = $1",
+            [project_id]
+        );
+
+        const totalMilestoneBudget = parseFloat(milestoneQuery.rows[0].total_milestone_budget);
+
+        // ✅ 3. Check for budget overrun
+        const overrun = totalMilestoneBudget > projectBudget;
+        const overrunAmount = overrun ? totalMilestoneBudget - projectBudget : 0;
+
+        // ✅ 4. Send Alert to Frontend Dashboard
+        if (overrun) {
+            const alertMessage = {
+                project_id,
+                message: "🚨 Budget Overrun Detected! Project ID: " + project_id + ", Overrun Amount: $" + overrunAmount,
+
+            };
+
+            // Send alert to all connected frontend dashboards
+            clients.forEach(client => client.emit("budget-alert", alertMessage));
+        }
+
+        // ✅ 5. Send API Response
+        res.json({
+            project_id,
+            project_budget: projectBudget,
+            total_milestone_budget: totalMilestoneBudget,
+            overrun,
+            overrun_amount: overrunAmount,
+            message: overrun ? "🚨 Budget Overrun Detected! Alert Sent to Dashboard." : "✅ Within Budget"
+        });
+
+    } catch (error) {
+        console.error("❌ Server error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
 // **🏗️ Start Server**
 app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));

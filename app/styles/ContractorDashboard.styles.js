@@ -1,54 +1,78 @@
 import { StyleSheet } from "react-native";
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 20,
-        backgroundColor: "#f5f5f5",
-    },
-    title: {
-        fontSize: 22,
-        fontWeight: "bold",
-        marginBottom: 15,
-        textAlign: "center",
-    },
-    label: {
-        fontSize: 16,
-        fontWeight: "600",
-        marginBottom: 10,
-    },
-    listItemContainer: {
-        backgroundColor: "#fff",
-        padding: 15,
-        borderRadius: 10,
-        marginBottom: 10,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 2,
-        elevation: 3,
-    },
-    listItem: {
-        fontSize: 16,
-        fontWeight: "bold",
-    },
-    picker: {
-        height: 50,
-        backgroundColor: "#fff",
-        borderRadius: 5,
-        marginBottom: 20,
-    },
-    button: {
-        marginTop: 10,
-        padding: 10,
-        backgroundColor: "#007bff",
-        borderRadius: 5,
-        alignItems: "center",
-    },
-    buttonText: {
-        color: "#fff",
-        fontWeight: "bold",
-    },
+export default StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F5F5F5",
+    padding: 20,
+    justifyContent: "center",
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#333",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#555",
+    marginBottom: 8,
+  },
+  picker: {
+    backgroundColor: "#FFF",
+    borderRadius: 8,
+    marginBottom: 15,
+    paddingHorizontal: 10,
+    height: 50,
+    borderWidth: 1,
+    borderColor: "#CCC",
+  },
+  input: {
+    backgroundColor: "#FFF",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#DDD",
+    padding: 10,
+    fontSize: 16,
+    marginBottom: 15,
+  },
+  button: {
+    backgroundColor: "#007AFF",
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginVertical: 10,
+  },
+  buttonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  listItemContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  listItem: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#444",
+  },
+  message: {
+    textAlign: "center",
+    fontSize: 16,
+    color: "green",
+    marginTop: 10,
+  },
 });
-
-export default styles;
