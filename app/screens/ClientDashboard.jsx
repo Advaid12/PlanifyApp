@@ -174,7 +174,7 @@ export default function ClientDashboard() {
               budget: milestone.budget || 0,
               beginningDate: milestone.beginningDate,
               deadline: milestone.deadline,
-              status: "In Progress",
+              status: "pending",
             })
           )
         );
