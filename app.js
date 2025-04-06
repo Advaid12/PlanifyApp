@@ -18,6 +18,8 @@ import ViewMilestone from "../screens/Contractor/ViewMilestone.jsx";
 import ContractorDashboard from "./app/screens/Contractor/ContractorDashboard.jsx";
 // import JoinChat from "./app/screens/Chat/JoinChat.jsx";
 // import Chat from "./app/screens/Chat/Chat.jsx";
+import BudgetStatusScreen from "./app/screens/BudgetStatusScreen.jsx";
+import BudgetStatusScreen1 from "./app/screens/BudgetStatusScreen1.jsx";
 const Stack = createStackNavigator();
 
 export default function App() {
@@ -39,6 +41,8 @@ export default function App() {
         <Stack.Screen name="ContractorDashboard" component={ContractorDashboard} />
         {/* <Stack.Screen name="JoinChat" component={JoinChat}/>
         <Stack.Screen name="Chat" component={Chat}/> */}
+        <Stack.Screen name="BudgetStatusScreen" component={BudgetStatusScreen}/>
+      <Stack.Screen name="BudgetStatusScreen1" component={BudgetStatusScreen1}/>
         
       </Stack.Navigator>
     </NavigationContainer>

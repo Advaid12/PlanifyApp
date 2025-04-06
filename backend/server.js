@@ -1461,61 +1461,110 @@ io.on("connection", (socket) => {
     });
 });
 
-// ✅ Check Budget Overrun API
-app.get("/api/check-budget/:project_id", async (req, res) => {
-    const { project_id } = req.params;
+app.get("/api/client-projects/:email", async (req, res) => {
+  const { email } = req.params;
 
-    try {
-        // ✅ 1. Fetch project budget
-        const projectQuery = await pool.query(
-            "SELECT budget FROM projects WHERE project_id = $1",
-            [project_id]
-        );
+  try {
+    // Fetch projects where the client is involved
+    const projects = await pool.query(
+      "SELECT project_id FROM projects WHERE email = $1",
+      [email]
+    );
 
-        if (projectQuery.rows.length === 0) {
-            return res.status(404).json({ error: "❌ Project not found." });
-        }
-
-        const projectBudget = parseFloat(projectQuery.rows[0].budget);
-
-        // ✅ 2. Calculate total milestone budget
-        const milestoneQuery = await pool.query(
-            "SELECT COALESCE(SUM(budget), 0) AS total_milestone_budget FROM milestones WHERE project_id = $1",
-            [project_id]
-        );
-
-        const totalMilestoneBudget = parseFloat(milestoneQuery.rows[0].total_milestone_budget);
-
-        // ✅ 3. Check for budget overrun
-        const overrun = totalMilestoneBudget > projectBudget;
-        const overrunAmount = overrun ? totalMilestoneBudget - projectBudget : 0;
-
-        // ✅ 4. Send Alert to Frontend Dashboard
-        if (overrun) {
-            const alertMessage = {
-                project_id,
-                message: "🚨 Budget Overrun Detected! Project ID: " + project_id + ", Overrun Amount: $" + overrunAmount,
-
-            };
-
-            // Send alert to all connected frontend dashboards
-            clients.forEach(client => client.emit("budget-alert", alertMessage));
-        }
-
-        // ✅ 5. Send API Response
-        res.json({
-            project_id,
-            project_budget: projectBudget,
-            total_milestone_budget: totalMilestoneBudget,
-            overrun,
-            overrun_amount: overrunAmount,
-            message: overrun ? "🚨 Budget Overrun Detected! Alert Sent to Dashboard." : "✅ Within Budget"
-        });
-
-    } catch (error) {
-        console.error("❌ Server error:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+    if (projects.rows.length === 0) {
+      return res.status(404).json({ error: "No projects found for this client." });
     }
+
+    const projectStatuses = [];
+
+    for (const row of projects.rows) {
+      const projectId = row.project_id;
+
+      const projectBudgetQuery = await pool.query(
+        "SELECT budget FROM projects WHERE project_id = $1",
+        [projectId]
+      );
+      const budget = parseFloat(projectBudgetQuery.rows[0].budget);
+
+      const milestoneQuery = await pool.query(
+        "SELECT COALESCE(SUM(budget), 0) AS total_milestone_budget FROM milestones WHERE project_id = $1",
+        [projectId]
+      );
+      const milestoneBudget = parseFloat(milestoneQuery.rows[0].total_milestone_budget);
+
+      const overrun = milestoneBudget > budget;
+      const overrunAmount = overrun ? milestoneBudget - budget : 0;
+
+      projectStatuses.push({
+        project_id: projectId,
+        project_budget: budget,
+        total_milestone_budget: milestoneBudget,
+        overrun,
+        overrun_amount: overrunAmount,
+        message: overrun
+          ? `🚨 Overrun of $${overrunAmount}`
+          : "✅ Within budget",
+      });
+    }
+
+    res.json(projectStatuses);
+  } catch (err) {
+    console.error("Error fetching client projects:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
+});
+
+app.get("/api/site-engineer-projects/:email", async (req, res) => {
+  const { email } = req.params;
+
+  try {
+    // Fetch projects where the client is involved
+    const projects = await pool.query(
+      "SELECT project_id FROM site_engineer_projects WHERE email = $1",
+      [email]
+    );
+
+    if (projects.rows.length === 0) {
+      return res.status(404).json({ error: "No projects found for this client." });
+    }
+
+    const projectStatuses = [];
+
+    for (const row of projects.rows) {
+      const projectId = row.project_id;
+
+      const projectBudgetQuery = await pool.query(
+        "SELECT budget FROM projects WHERE project_id = $1",
+        [projectId]
+      );
+      const budget = parseFloat(projectBudgetQuery.rows[0].budget);
+
+      const milestoneQuery = await pool.query(
+        "SELECT COALESCE(SUM(budget), 0) AS total_milestone_budget FROM milestones WHERE project_id = $1",
+        [projectId]
+      );
+      const milestoneBudget = parseFloat(milestoneQuery.rows[0].total_milestone_budget);
+
+      const overrun = milestoneBudget > budget;
+      const overrunAmount = overrun ? milestoneBudget - budget : 0;
+
+      projectStatuses.push({
+        project_id: projectId,
+        project_budget: budget,
+        total_milestone_budget: milestoneBudget,
+        overrun,
+        overrun_amount: overrunAmount,
+        message: overrun
+          ? `🚨 Overrun of $${overrunAmount}`
+          : "✅ Within budget",
+      });
+    }
+
+    res.json(projectStatuses);
+  } catch (err) {
+    console.error("Error fetching client projects:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
 });
 // **🏗️ Start Server**
 app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));

@@ -15,6 +15,8 @@ import AssignWorkers from "../screens/Contractor/AssignWorkers.jsx";
 import WorkerManagement from "../screens/Contractor/WorkerManagement.jsx";
 import ViewMilestone from "../screens/Contractor/ViewMilestone.jsx";
 import ContractorDashboard from "../screens/Contractor/ContractorDashboard.jsx";
+import BudgetStatusScreen from "../screens/BudgetStatusScreen.jsx";
+import BudgetStatusScreen1 from "../screens/BudgetStatusScreen1.jsx";
 
 const Stack = createStackNavigator();
 
@@ -36,6 +38,8 @@ export default function AppNavigator() {
         <Stack.Screen name="ContractorDashboard" component={ContractorDashboard}/>
         {/* <Stack.Screen name="Chat" component={Chat}/>
         <Stack.Screen name="JoinChat" component={JoinChat}/>  */}
+        <Stack.Screen name="BudgetStatusScreen" component={BudgetStatusScreen}/>
+        <Stack.Screen name="BudgetStatusScreen1" component={BudgetStatusScreen1}/>
         
       </Stack.Navigator>
     </NavigationContainer>

@@ -47,11 +47,11 @@ export default function ViewMilestones() {
             </View> */}
 
             {/* ✅ Add Project Button */}
-            <View style={styles.topButtonsContainer}>
+            {/* <View style={styles.topButtonsContainer}>
                 <TouchableOpacity style={styles.topButton} onPress={() => navigation.navigate("ClientDashboard")}>
                     <Text style={styles.topButtonText}>➕ Add Project</Text>
                 </TouchableOpacity>
-            </View>
+            </View> */}
 
             <Text style={styles.title}>Milestone Status</Text>
             <TextInput style={styles.input} placeholder="Enter Project ID" value={projectId} onChangeText={setProjectId} />

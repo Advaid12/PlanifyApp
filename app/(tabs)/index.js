@@ -15,6 +15,8 @@ import WorkerManagement from "../screens/Contractor/WorkerManagement.jsx";
 import ViewMilestone from "../screens/Contractor/ViewMilestone.jsx";
 import { View } from "react-native-web";
 import ContractorDashboard from "../screens/Contractor/ContractorDashboard.jsx";
+import BudgetStatusScreen from "../screens/BudgetStatusScreen.jsx";
+import BudgetStatusScreen1 from "../screens/BudgetStatusScreen1.jsx";
 
 
 
@@ -38,6 +40,8 @@ export default function Index() {
       <Stack.Screen name="WorkerManagement" component={WorkerManagement} />
       <Stack.Screen name="ViewMilestone" component={ViewMilestone} />
       <Stack.Screen name="ContractorDashboard" component={ContractorDashboard}/>
+      <Stack.Screen name="BudgetStatusScreen" component={BudgetStatusScreen}/>
+      <Stack.Screen name="BudgetStatusScreen1" component={BudgetStatusScreen1}/>
     </Stack.Navigator>
   );
 }
