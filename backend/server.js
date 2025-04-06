@@ -1265,33 +1265,102 @@ app.get("/api/contractor/milestones", async (req, res) => {
 });
 
 // 1. Fetch Projects for a Contractor
-app.get("/api/projects", async (req, res) => {
-  const contractorId = req.query.contractor_id;
 
-  if (!contractorId) {
-      return res.status(400).json({ error: "Contractor ID is required" });
+app.get("/api/contractor/user-id", async (req, res) => {
+  const email = req.query.email;
+
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
   }
 
   try {
-      const result = await pool.query(
-          `SELECT p.project_id, p.name, p.budget, p.beginningdate, p.deadline 
-           FROM public.projects p 
-           JOIN public.contractor_projects cp ON p.project_id = cp.project_id 
-           WHERE cp.user_id = $1`, [contractorId]
-      );
+    const result = await pool.query(
+      "SELECT user_id FROM public.contractor_projects WHERE contractor_email = $1 LIMIT 1;",
+      [email]
+    );
 
-      const projects = result.rows;
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
-      if (projects.length === 0) {
-          return res.status(404).json({ message: "No projects found for this contractor" });
-      }
-
-      res.json(projects);
+    res.json({ user_id: result.rows[0].user_id });
   } catch (error) {
-      console.error("❌ Error fetching projects:", error);
-      res.status(500).json({ error: "Server error" });
+    console.error("❌ Error fetching contractor user_id:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
+
+
+app.get("/api/projects", async (req, res) => {
+  let contractorId = req.query.user_id;
+
+  if (!contractorId) {
+    return res.status(400).json({ error: "Contractor user_id is required" });
+  }
+
+  contractorId = contractorId.trim(); // <-- Trim newline and spaces
+
+  try {
+    const result = await pool.query(
+      `SELECT p.project_id, p.name, p.budget, p.beginningdate, p.deadline 
+       FROM public.projects p 
+       JOIN public.contractor_projects cp ON p.project_id = cp.project_id 
+       WHERE cp.user_id = $1`, [contractorId]
+    );
+
+    const projects = result.rows;
+
+    if (projects.length === 0) {
+      return res.status(404).json({ message: "No projects found for this contractor" });
+    }
+
+    res.json(projects);
+  } catch (error) {
+    console.error("❌ Error fetching projects:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// app.get("/api/projects", async (req, res) => {
+//   const contractorId = req.query.contractor_id;
+
+//   if (!contractorId) {
+//       return res.status(400).json({ error: "Contractor ID is required" });
+//   }
+
+//   try {
+//       const result = await pool.query(
+//           `SELECT p.project_id, p.name, p.budget, p.beginningdate, p.deadline 
+//            FROM public.projects p 
+//            JOIN public.contractor_projects cp ON p.project_id = cp.project_id 
+//            WHERE cp.user_id = $1`, [contractorId]
+//       );
+
+//       const projects = result.rows;
+
+//       if (projects.length === 0) {
+//           return res.status(404).json({ message: "No projects found for this contractor" });
+//       }
+
+//       res.json(projects);
+//   } catch (error) {
+//       console.error("❌ Error fetching projects:", error);
+//       res.status(500).json({ error: "Server error" });
+//   }
+// });
 
 // 2. Fetch Milestones for a Project
 app.get("/api/milestones", async (req, res) => {
@@ -1322,60 +1391,59 @@ app.get("/api/milestones", async (req, res) => {
 
 // 3. Assign Workers to a Milestone
 app.post("/api/assign-workers", async (req, res) => {
-  const { contractor_id, project_id, milestone_id, num_workers } = req.body;
+  const { contractor_id, project_id, milestone_name, num_workers } = req.body;
 
-  if (!contractor_id || !project_id || !milestone_id || !num_workers) {
-      return res.status(400).json({ error: "All fields are required" });
+  if (!contractor_id || !project_id || !milestone_name || !num_workers) {
+    return res.status(400).json({ error: "All fields are required" });
   }
 
   try {
-      // Step 1: Check if there are enough workers in the contractor's project
-      const availableWorkersResult = await pool.query(
-          `SELECT total_workers_assigned 
-           FROM public.contractor_projects 
-           WHERE user_id = $1 AND project_id = $2`, [contractor_id, project_id]
-      );
+    // Step 1: Check available workers
+    const availableWorkersResult = await pool.query(
+      `SELECT total_workers_assigned 
+       FROM public.contractor_projects 
+       WHERE user_id = $1 AND project_id = $2`,
+      [contractor_id, project_id]
+    );
 
-      if (availableWorkersResult.rows.length === 0) {
-          return res.status(404).json({ error: "Project not found for this contractor" });
-      }
+    if (availableWorkersResult.rows.length === 0) {
+      return res.status(404).json({ error: "Project not found for this contractor" });
+    }
 
-      const availableWorkers = availableWorkersResult.rows[0].total_workers_assigned;
+    const availableWorkers = availableWorkersResult.rows[0].total_workers_assigned;
 
-      // Step 2: If there are not enough workers, return an error
-      if (availableWorkers < num_workers) {
-          return res.status(400).json({ error: "Not enough workers available for this project" });
-      }
+    if (availableWorkers < num_workers) {
+      return res.status(400).json({ error: "Not enough workers available for this project" });
+    }
 
-      // Step 3: Subtract the workers from the contractor_projects table
-      await pool.query(
-          `UPDATE public.contractor_projects 
-           SET total_workers_assigned = total_workers_assigned - $1 
-           WHERE user_id = $2 AND project_id = $3`,
-          [num_workers, contractor_id, project_id]
-      );
+    // Step 2: Subtract assigned workers
+    await pool.query(
+      `UPDATE public.contractor_projects 
+       SET total_workers_assigned = total_workers_assigned - $1 
+       WHERE user_id = $2 AND project_id = $3`,
+      [num_workers, contractor_id, project_id]
+    );
 
-      // Step 4: Insert or update the worker assignment in the `worker_assignments` table
-      const result = await pool.query(
-          `
-          INSERT INTO public.worker_assignments (id, project_id, milestone_id, workers_assigned)
-          VALUES (gen_random_uuid(), $1, $2, $3)
-          ON CONFLICT (project_id, milestone_id) 
-          DO UPDATE SET workers_assigned = worker_assignments.workers_assigned + $3
-          RETURNING id
-          `, 
-          [project_id, milestone_id, num_workers]
-      );
+    // Step 3: Insert/update assignment using milestone_name
+    const result = await pool.query(
+      `
+      INSERT INTO public.worker_assignments (id, project_id, milestone_name, workers_assigned)
+      VALUES (gen_random_uuid()::text, $1, $2, $3)
+      ON CONFLICT (project_id, milestone_name)
+      DO UPDATE SET workers_assigned = worker_assignments.workers_assigned + $3
+      RETURNING id
+      `,
+      [project_id, milestone_name, num_workers]
+    );
 
-      const assignmentId = result.rows[0].id;
+    res.json({ message: `Successfully assigned ${num_workers} workers to milestone`, assignmentId: result.rows[0].id });
 
-
-      res.json({ message: `Successfully assigned ${num_workers} workers to milestone`, assignmentId });
   } catch (error) {
-      console.error("❌ Error assigning workers:", error);
-      res.status(500).json({ error: "Server error" });
+    console.error("❌ Error assigning workers:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
+
 
 let clients = [];
 
