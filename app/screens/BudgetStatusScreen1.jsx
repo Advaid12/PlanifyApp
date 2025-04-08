@@ -25,7 +25,7 @@ const BudgetStatusScreen = () => {
         setStatuses(response.data);
       } catch (err) {
         console.error("Error fetching budget statuses:", err);
-        setErrorMsg("Failed to load budget statuses.");
+        setErrorMsg("no current projects.");
       } finally {
         setLoading(false);
       }

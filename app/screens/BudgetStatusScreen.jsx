@@ -25,7 +25,7 @@ const BudgetStatusScreen = () => {
         setStatuses(response.data);
       } catch (err) {
         console.error("Error fetching budget statuses:", err);
-        setErrorMsg("Failed to load budget statuses.");
+        setErrorMsg("no current project.");
       } finally {
         setLoading(false);
       }
@@ -35,7 +35,6 @@ const BudgetStatusScreen = () => {
   }, []);
 
   if (loading) return <ActivityIndicator size="large" style={{ marginTop: 50 }} />;
-  if (errorMsg) return <Text style={styles.error}>{errorMsg}</Text>;
 
   return (
     <ScrollView style={styles.container}>
@@ -48,24 +47,31 @@ const BudgetStatusScreen = () => {
           <Text style={styles.navButtonText}>📌 View Milestones</Text>
         </TouchableOpacity>
       </View>
-
+  
       <Text style={styles.header}>📊 Your Project Budget Statuses</Text>
-      {statuses.map((status, index) => (
-        <View key={index} style={styles.card}>
-          <Text style={styles.label}>Project ID: {status.project_id}</Text>
-          <Text style={styles.label}>Total Budget: {status.project_budget}</Text>
-          <Text style={styles.label}>Milestone Budget: {status.total_milestone_budget}</Text>
-          <Text style={[styles.label, { color: status.overrun ? "red" : "green" }]}>
-            {status.message}
-          </Text>
-          {status.overrun && (
-            <Text style={styles.alert}>🚨 Overrun Amount: ${status.overrun_amount}</Text>
-          )}
-        </View>
-      ))}
+  
+      {errorMsg ? (
+        <Text style={styles.error}>{errorMsg}</Text>
+      ) : statuses.length === 0 ? (
+        <Text style={styles.noData}>No projects committed yet.</Text>
+      ) : (
+        statuses.map((status, index) => (
+          <View key={index} style={styles.card}>
+            <Text style={styles.label}>Project ID: {status.project_id}</Text>
+            <Text style={styles.label}>Total Budget: {status.project_budget}</Text>
+            <Text style={styles.label}>Milestone Budget: {status.total_milestone_budget}</Text>
+            <Text style={[styles.label, { color: status.overrun ? "red" : "green" }]}>
+              {status.message}
+            </Text>
+            {status.overrun && (
+              <Text style={styles.alert}>🚨 Overrun Amount: ${status.overrun_amount}</Text>
+            )}
+          </View>
+        ))
+      )}
     </ScrollView>
   );
-};
+}  
 
 const styles = StyleSheet.create({
   container: {
@@ -121,6 +127,13 @@ const styles = StyleSheet.create({
     color: "red",
     textAlign: "center",
   },
+  noData: {
+  textAlign: "center",
+  marginTop: 40,
+  fontSize: 16,
+  color: "#666",
+},
+
 });
 
 export default BudgetStatusScreen;
