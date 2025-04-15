@@ -70,7 +70,7 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-
+module.exports = pool;
 
 
 
@@ -1328,7 +1328,80 @@ app.get("/api/projects", async (req, res) => {
 
 
 
+// app.get("/api/contractor/remaining-workers", async (req, res) => {
+//   const { email, project_id } = req.query;
 
+//   if (!email || !project_id) {
+//     return res.status(400).json({ error: "Missing email or project_id in query." });
+//   }
+
+//   try {
+//     // Step 1: Get total_workers_assigned for this contractor and project
+//     const totalResult = await db.query(
+//       `SELECT total_workers_assigned 
+//        FROM contractor_projects 
+//        WHERE contractor_email = $1 AND project_id = $2`,
+//       [email, project_id]
+//     );
+
+//     if (totalResult.rows.length === 0) {
+//       return res.status(404).json({ error: "Contractor or project not found." });
+//     }
+
+//     const total_workers = totalResult.rows[0].total_workers_assigned;
+
+//     // Step 2: Get the total assigned workers for this project
+//     const assignedResult = await db.query(
+//       `SELECT COALESCE(SUM(workers_assigned), 0) AS assigned 
+//        FROM worker_assignments 
+//        WHERE project_id = $1`,
+//       [project_id]
+//     );
+
+//     const workers_assigned = assignedResult.rows[0].assigned;
+
+//     // Step 3: Calculate remaining
+//     const remaining_workers = total_workers - workers_assigned;
+
+//     res.json({ 
+//       total_workers, 
+//       workers_assigned,
+//       remaining_workers 
+//     });
+//   } catch (err) {
+//     console.error("❌ Error calculating remaining workers:", err);
+//     res.status(500).json({ error: "Failed to fetch remaining workers." });
+//   }
+// });
+app.get("/api/contractor/remaining-workers", async (req, res) => {
+  const { email, project_id } = req.query;
+
+  if (!email || !project_id) {
+    return res.status(400).json({ error: "Missing email or project_id in query." });
+  }
+
+  try {
+    // ✅ Check if the contractor-project entry exists
+    const contractorCheck = await pool.query(
+      "SELECT total_workers_assigned FROM contractor_projects WHERE contractor_email = $1 AND project_id = $2",
+      [email, project_id]
+    );
+
+    if (contractorCheck.rows.length === 0) {
+      return res.status(404).json({ error: `Contractor or project not found.` });
+    }
+
+    // ✅ Get the remaining workers directly
+    const total_workers = contractorCheck.rows[0].total_workers_assigned;
+
+    res.json({
+      total_workers
+    });
+  } catch (err) {
+    console.error("❌ Error fetching remaining workers:", err);
+    res.status(500).json({ error: "Failed to fetch remaining workers." });
+  }
+});
 
 
 

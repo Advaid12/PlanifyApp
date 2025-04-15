@@ -68,4 +68,39 @@ export default StyleSheet.create({
     color: "green",
     marginTop: 10,
   },
+  remainingText: {
+    marginTop: 8,
+    fontSize: 16,
+    color: "green",
+    fontWeight: "600",
+  },
+
+  // ✅ NEWLY ADDED STYLES (without modifying existing ones)
+
+  subtitle: {
+    fontSize: 18,
+    fontWeight: "500",
+    marginVertical: 10,
+    textAlign: "center",
+    color: "#444",
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: "#CCC",
+    marginVertical: 20,
+  },
+  disabledButton: {
+    backgroundColor: "#A0A0A0",
+  },
+  smallText: {
+    fontSize: 12,
+    color: "#888",
+    textAlign: "center",
+  },
+  errorText: {
+    color: "#D00",
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 5,
+  },
 });
