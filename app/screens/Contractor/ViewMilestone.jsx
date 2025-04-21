@@ -58,6 +58,7 @@ export default function ViewMilestones() {
                         <View style={styles.milestoneCard}>
                             <Text style={styles.milestoneText}>📌 {item.milestone_name}</Text>
                             <Text>Status: {item.status}</Text>
+                            <Text>workers:{item.workers_assigned}</Text>
                         </View>
                     )}
                 />

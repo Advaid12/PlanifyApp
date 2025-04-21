@@ -1245,7 +1245,7 @@ app.get("/api/contractor/milestones", async (req, res) => {
 
   try {
       const query = `
-          SELECT milestone_id, milestone_name, project_id, status
+          SELECT milestone_id, milestone_name, project_id, status ,workers_assigned
           FROM milestones
           WHERE project_id = $1
           ORDER BY milestone_name;
@@ -1325,6 +1325,39 @@ app.get("/api/projects", async (req, res) => {
 
 
 
+app.post("/api/contractor/assign-workers-to-milestone", async (req, res) => {
+  const { project_id, milestone_name, num_workers } = req.body;
+
+  if (!project_id || !milestone_name || !num_workers) {
+    return res.status(400).json({ error: "Missing required fields." });
+  }
+
+  try {
+    // Get current workers assigned (if any)
+    const current = await pool.query(
+      "SELECT COALESCE(workers_assigned, 0) AS workers_assigned FROM milestones WHERE project_id = $1 AND milestone_name = $2",
+      [project_id, milestone_name]
+    );
+
+    if (current.rows.length === 0) {
+      return res.status(404).json({ error: "Milestone not found." });
+    }
+
+    const currentAssigned = current.rows[0].workers_assigned;
+    const newAssigned = currentAssigned + parseInt(num_workers);
+
+    // Update milestone with new workers_assigned
+    await pool.query(
+      "UPDATE milestones SET workers_assigned = $1 WHERE project_id = $2 AND milestone_name = $3",
+      [newAssigned, project_id, milestone_name]
+    );
+
+    res.json({ message: "Workers successfully assigned to milestone." });
+  } catch (err) {
+    console.error("❌ Error assigning workers:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
+});
 
 
 

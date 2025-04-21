@@ -89,7 +89,8 @@ export default function AssignWorkers({ navigation }) {
         try {
             setLoading(true);
 
-            const response = await axios.get(`${API_BASE_URL}/api/milestones?project_id=${projectId}`);
+            const response = await axios.get(`${API_BASE_URL}/api/contractor/milestones?project_id=${projectId}`);
+
             const fetchedMilestones = response.data || [];
 
             console.log("✅ Fetched Milestones:", fetchedMilestones);
@@ -128,6 +129,13 @@ export default function AssignWorkers({ navigation }) {
                 return;
             }
 
+            await axios.post(`${API_BASE_URL}/api/contractor/assign-workers-to-milestone`, {
+                project_id: selectedProject,
+                milestone_name: selectedMilestone,
+                num_workers: parseInt(numWorkers),
+            });
+              
+
             const userIdResponse = await axios.get(`${API_BASE_URL}/api/contractor/user-id`, {
                 params: { email }
             });
@@ -155,6 +163,8 @@ export default function AssignWorkers({ navigation }) {
             Alert.alert("Error", error.response?.data?.error || "❌ Failed to assign workers.");
         }
     };
+
+    
 
     return (
         <View style={styles.container}>
