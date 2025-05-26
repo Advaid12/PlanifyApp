@@ -67,4 +67,9 @@ export default StyleSheet.create({
     fontWeight: "bold",
     textTransform: "uppercase",
   },
+  milestoneText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#444",
+  },
 });

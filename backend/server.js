@@ -1245,7 +1245,7 @@ app.get("/api/contractor/milestones", async (req, res) => {
 
   try {
       const query = `
-          SELECT milestone_id, milestone_name, project_id, status ,workers_assigned
+          SELECT milestone_id, milestone_name, project_id, status ,workers_assigned,beginningdate,deadline,budget
           FROM milestones
           WHERE project_id = $1
           ORDER BY milestone_name;

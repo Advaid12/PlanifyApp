@@ -59,6 +59,9 @@ export default function ViewMilestones() {
                             <Text style={styles.milestoneText}>📌 {item.milestone_name}</Text>
                             <Text>Status: {item.status}</Text>
                             <Text>workers:{item.workers_assigned}</Text>
+                            <Text>Beginning Date: {item.beginningdate}</Text>
+                            <Text>Deadline : {item.deadline}</Text>
+                            <Text>budget : {item.budget}</Text>
                         </View>
                     )}
                 />
